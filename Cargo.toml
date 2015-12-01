@@ -1,0 +1,4 @@
+[package]
+name = "rustigo"
+version = "0.1.0"
+authors = ["John Barker <jebarker@gmail.com>"]
