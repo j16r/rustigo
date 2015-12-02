@@ -1,3 +1,4 @@
+use conv::TryFrom;
 use std::collections::btree_map::BTreeMap;
 
 type Coordinate = (u8, u8);
@@ -8,17 +9,19 @@ pub enum Stone {
     White
 }
 
-#[derive(Copy, Clone)]
-pub enum Size {
-    Nine = 9,
-    Thirteen = 13,
-    Seventeen = 17,
-    Nineteen = 19
+custom_derive! {
+    #[derive(Debug, Copy, Clone, TryFrom(usize))]
+    pub enum Size {
+        Nine = 9,
+        Thirteen = 13,
+        Seventeen = 17,
+        Nineteen = 19
+    }
 }
 
 pub struct Game {
     id: u64,
-    stones: BTreeMap<Coordinate, Stone>,
+    board: BTreeMap<Coordinate, Stone>,
     size: Size,
     turn: Stone
 }
@@ -26,9 +29,45 @@ pub struct Game {
 pub fn new(size: Size) -> Game {
     Game{
         id: 0,
-        stones: BTreeMap::new(),
+        board: BTreeMap::new(),
         size: size,
         turn: Stone::Black}
+}
+
+pub fn parse(board_str: &str) -> Option<Game> {
+    let mut board = BTreeMap::new();
+    let lines : Vec<&str> = board_str.trim().split("\n").collect();
+
+    if lines.len() < (Size::Nine as usize) || lines.len() > (Size::Nineteen as usize) {
+        return None;
+    }
+
+    let line_length = lines[0].trim().len();
+    if line_length != lines.len() {
+        return None;
+    }
+
+    let size_result = Size::try_from(line_length);
+    let size = match size_result {
+        Ok(size) => size,
+        _ => return None,
+    };
+
+    for (y, line) in lines.iter().enumerate() {
+        for (x, tile) in line.chars().enumerate() {
+            match tile {
+                'b' => { board.insert((x as u8, y as u8), Stone::Black); },
+                'w' => { board.insert((x as u8, y as u8), Stone::White); },
+                _ => (),
+            }
+        }
+    }
+
+    Some(Game{
+        id: 0,
+        board: board,
+        size: size,
+        turn: Stone::Black})
 }
 
 impl Game {
@@ -41,7 +80,7 @@ impl Game {
     }
 
     fn free_tile(&self, position: Coordinate) -> bool {
-        !self.stones.contains_key(&position)
+        !self.board.contains_key(&position)
     }
 
     fn can_play(&self, position: Coordinate, stone: Stone) -> bool {
@@ -59,7 +98,7 @@ impl Game {
 
     pub fn play_stone(&mut self, position: Coordinate, stone: Stone) -> bool {
         if self.can_play(position, stone) {
-            self.stones.insert(position, stone);
+            self.board.insert(position, stone);
             self.advance_turn();
             true
         } else {
@@ -68,19 +107,19 @@ impl Game {
     }
 
     pub fn has_stone(&self, position: Coordinate) -> bool {
-        self.stones.contains_key(&position)
+        self.board.contains_key(&position)
     }
 
     pub fn stones(&self) -> u32 {
-        self.stones.len() as u32
+        self.board.len() as u32
     }
 
     pub fn player_stones(&self, stone: Stone) -> u32 {
-        self.stones.iter().filter(|&(_, piece)| *piece == stone).count() as u32
+        self.board.iter().filter(|&(_, piece)| *piece == stone).count() as u32
     }
 
     pub fn player_score(&self, stone: Stone) -> u32 {
-        self.stones.iter().filter(|&(_, piece)| *piece == stone).count() as u32
+        self.board.iter().filter(|&(_, piece)| *piece == stone).count() as u32
     }
 
     pub fn winner(&self) -> Stone {
@@ -128,4 +167,23 @@ fn test_play_stone_rejects_duplicate_plays() {
     let mut game = new(Size::Nine);
     assert_eq!(true, game.play_stone((0, 0), Stone::Black));
     assert_eq!(false, game.play_stone((0, 0), Stone::White));
+}
+
+#[test]
+fn test_parse() {
+    let game = parse("
+.b.......
+b........
+.........
+.........
+.........
+.........
+.........
+.........
+.........").unwrap();
+
+    assert_eq!(false, game.has_stone((0, 0)));
+    assert_eq!(true, game.has_stone((1, 0)));
+    assert_eq!(true, game.has_stone((0, 1)));
+    assert_eq!(false, game.has_stone((1, 1)));
 }
