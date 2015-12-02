@@ -35,8 +35,16 @@ impl Game {
         x < self.size as u8 && y < self.size as u8
     }
 
+    fn free_tile(&self, position: Coordinate) -> bool {
+        !self.stones.contains_key(&position)
+    }
+
+    fn can_play(&self, position: Coordinate) -> bool {
+        self.valid_coordinate(position) && self.free_tile(position)
+    }
+
     pub fn play_stone(&mut self, stone: Stone, position: Coordinate) -> bool {
-        if self.valid_coordinate(position) {
+        if self.can_play(position) {
             self.stones.insert(position, stone);
             true
         } else {
@@ -91,4 +99,11 @@ fn test_play_stone_rejects_invalid_plays() {
     assert_eq!(false, game.play_stone(Stone::Black, (10, 0)));
     assert_eq!(false, game.play_stone(Stone::Black, (10, 10)));
     assert_eq!(false, game.play_stone(Stone::Black, (0, 10)));
+}
+
+#[test]
+fn test_play_stone_rejects_duplicate_plays() {
+    let mut game = new(Size::Nine);
+    assert_eq!(true, game.play_stone(Stone::Black, (0, 0)));
+    assert_eq!(false, game.play_stone(Stone::White, (0, 0)));
 }
