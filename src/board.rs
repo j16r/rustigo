@@ -2,7 +2,7 @@ use std::collections::btree_map::BTreeMap;
 
 type Coordinate = (u8, u8);
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum Stone {
     Black,
     White
@@ -20,15 +20,20 @@ pub struct Game {
     id: u64,
     stones: BTreeMap<Coordinate, Stone>,
     size: Size,
+    turn: Stone
 }
 
 pub fn new(size: Size) -> Game {
-    Game{id: 0, stones: BTreeMap::new(), size: size}
+    Game{
+        id: 0,
+        stones: BTreeMap::new(),
+        size: size,
+        turn: Stone::Black}
 }
 
 impl Game {
     pub fn turn(&self) -> Stone {
-        Stone::Black
+        self.turn
     }
 
     fn valid_coordinate(&self, (x, y): Coordinate) -> bool {
@@ -39,13 +44,23 @@ impl Game {
         !self.stones.contains_key(&position)
     }
 
-    fn can_play(&self, position: Coordinate) -> bool {
-        self.valid_coordinate(position) && self.free_tile(position)
+    fn can_play(&self, position: Coordinate, stone: Stone) -> bool {
+        self.turn == stone && 
+            self.valid_coordinate(position) && 
+            self.free_tile(position)
     }
 
-    pub fn play_stone(&mut self, stone: Stone, position: Coordinate) -> bool {
-        if self.can_play(position) {
+    fn advance_turn(&mut self) {
+        match self.turn {
+            Stone::Black => self.turn = Stone::White,
+            Stone::White => self.turn = Stone::Black,
+        }
+    }
+
+    pub fn play_stone(&mut self, position: Coordinate, stone: Stone) -> bool {
+        if self.can_play(position, stone) {
             self.stones.insert(position, stone);
+            self.advance_turn();
             true
         } else {
             false
@@ -86,7 +101,7 @@ fn test_play_stone() {
     let mut game = new(Size::Nine);
     assert_eq!(false, game.has_stone((0, 0)));
 
-    game.play_stone(Stone::Black, (0, 0));
+    game.play_stone((0, 0), Stone::Black);
     assert_eq!(true, game.has_stone((0, 0)));
     assert_eq!(1, game.stones());
     assert_eq!(1, game.player_stones(Stone::Black));
@@ -94,16 +109,23 @@ fn test_play_stone() {
 }
 
 #[test]
+fn test_play_stone_switches_players() {
+    let mut game = new(Size::Nine);
+    assert_eq!(true, game.play_stone((0, 0), Stone::Black));
+    assert_eq!(false, game.play_stone((1, 0), Stone::Black));
+}
+
+#[test]
 fn test_play_stone_rejects_invalid_plays() {
     let mut game = new(Size::Nine);
-    assert_eq!(false, game.play_stone(Stone::Black, (10, 0)));
-    assert_eq!(false, game.play_stone(Stone::Black, (10, 10)));
-    assert_eq!(false, game.play_stone(Stone::Black, (0, 10)));
+    assert_eq!(false, game.play_stone((10, 0), Stone::Black));
+    assert_eq!(false, game.play_stone((10, 10), Stone::Black));
+    assert_eq!(false, game.play_stone((0, 10), Stone::Black));
 }
 
 #[test]
 fn test_play_stone_rejects_duplicate_plays() {
     let mut game = new(Size::Nine);
-    assert_eq!(true, game.play_stone(Stone::Black, (0, 0)));
-    assert_eq!(false, game.play_stone(Stone::White, (0, 0)));
+    assert_eq!(true, game.play_stone((0, 0), Stone::Black));
+    assert_eq!(false, game.play_stone((0, 0), Stone::White));
 }
