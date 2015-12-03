@@ -1,7 +1,7 @@
 use conv::TryFrom;
 use std::collections::btree_map::BTreeMap;
 
-type Coordinate = (u8, u8);
+type Coordinate = (i8, i8);
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum Stone {
@@ -34,7 +34,7 @@ pub fn new(size: Size) -> Game {
         turn: Stone::Black}
 }
 
-pub fn parse(board_str: &str) -> Option<Game> {
+pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
     let mut board = BTreeMap::new();
     let lines : Vec<&str> = board_str.trim().split("\n").collect();
 
@@ -56,8 +56,8 @@ pub fn parse(board_str: &str) -> Option<Game> {
     for (y, line) in lines.iter().enumerate() {
         for (x, tile) in line.chars().enumerate() {
             match tile {
-                'b' => { board.insert((x as u8, y as u8), Stone::Black); },
-                'w' => { board.insert((x as u8, y as u8), Stone::White); },
+                'b' => { board.insert((x as i8, y as i8), Stone::Black); },
+                'w' => { board.insert((x as i8, y as i8), Stone::White); },
                 _ => (),
             }
         }
@@ -67,7 +67,7 @@ pub fn parse(board_str: &str) -> Option<Game> {
         id: 0,
         board: board,
         size: size,
-        turn: Stone::Black})
+        turn: turn})
 }
 
 impl Game {
@@ -76,15 +76,28 @@ impl Game {
     }
 
     fn valid_coordinate(&self, (x, y): Coordinate) -> bool {
-        x < self.size as u8 && y < self.size as u8
+        x >= 0 && x < self.size as i8 && y >= 0 && y < self.size as i8
     }
 
     fn free_tile(&self, position: Coordinate) -> bool {
         !self.board.contains_key(&position)
     }
 
+    fn neighbour_count(&self, (x, y): Coordinate, stone: Stone) -> usize {
+        let adjacent_tiles = [(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)];
+        adjacent_tiles.iter()
+            .map(|coordinate| { self.board.get(coordinate) })
+            .filter(|tile| tile.is_some())
+            .count()
+    }
+
+    fn is_suicide(&self, (x, y): Coordinate, stone: Stone) -> bool {
+        self.neighbour_count((x, y), stone) > 0
+    }
+
     fn can_play(&self, position: Coordinate, stone: Stone) -> bool {
         self.turn == stone && 
+            !self.is_suicide(position, stone) &&
             self.valid_coordinate(position) && 
             self.free_tile(position)
     }
@@ -180,10 +193,30 @@ b........
 .........
 .........
 .........
-.........").unwrap();
+.........", Stone::Black).unwrap();
 
     assert_eq!(false, game.has_stone((0, 0)));
     assert_eq!(true, game.has_stone((1, 0)));
     assert_eq!(true, game.has_stone((0, 1)));
     assert_eq!(false, game.has_stone((1, 1)));
+}
+
+#[test]
+fn test_play_stone_no_liberties() {
+    let mut game = parse("
+.b.....b.
+b.bbbbbb.
+.b....bbb
+..bbb.b..
+.....b...
+.........
+.........
+b.......b
+.b.....b.", Stone::White).unwrap();
+
+    assert_eq!(false, game.play_stone((0, 0), Stone::White));
+    assert_eq!(false, game.play_stone((1, 1), Stone::White));
+    assert_eq!(false, game.play_stone((1, 2), Stone::White));
+    assert_eq!(false, game.play_stone((9, 0), Stone::White));
+    assert_eq!(false, game.play_stone((9, 9), Stone::White));
 }
