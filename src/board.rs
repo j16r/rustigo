@@ -96,9 +96,9 @@ impl Game {
     }
 
     fn can_play(&self, position: Coordinate, stone: Stone) -> bool {
-        self.turn == stone && 
+        self.turn == stone &&
             !self.is_suicide(position, stone) &&
-            self.valid_coordinate(position) && 
+            self.valid_coordinate(position) &&
             self.free_tile(position)
     }
 
