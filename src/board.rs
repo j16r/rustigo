@@ -123,16 +123,16 @@ impl Game {
         self.board.contains_key(&position)
     }
 
-    pub fn stones(&self) -> u32 {
-        self.board.len() as u32
+    pub fn stones(&self) -> usize {
+        self.board.len()
     }
 
-    pub fn player_stones(&self, stone: Stone) -> u32 {
-        self.board.iter().filter(|&(_, piece)| *piece == stone).count() as u32
+    pub fn player_stones(&self, stone: Stone) -> usize {
+        self.board.iter().filter(|&(_, piece)| *piece == stone).count()
     }
 
-    pub fn player_score(&self, stone: Stone) -> u32 {
-        self.board.iter().filter(|&(_, piece)| *piece == stone).count() as u32
+    pub fn player_score(&self, stone: Stone) -> usize {
+        self.board.iter().filter(|&(_, piece)| *piece == stone).count()
     }
 
     pub fn winner(&self) -> Stone {
