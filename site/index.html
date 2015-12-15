@@ -8,7 +8,17 @@
   <meta name="description" content="Go">
 
   <script>
-    var socket = new WebSocket("ws://127.0.0.1:3012/");
+    var uri = window.location;
+    var new_uri;
+    if (uri.protocol === "https:") {
+      new_uri = "wss:";
+    } else {
+      new_uri = "ws:";
+    }
+    new_uri += "//" + uri.host;
+    new_uri += uri.pathname + "/ws";
+
+    var socket = new WebSocket(new_uri);
     socket.onmessage = function(event) {
       console.log(event.data);
     }
