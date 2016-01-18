@@ -1,7 +1,9 @@
 use conv::TryFrom;
 use std::collections::btree_map::BTreeMap;
+use std::collections::HashSet;
+use std::iter::Iterator;
 
-type Coordinate = (i8, i8);
+pub type Coordinate = (i8, i8);
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum Stone {
@@ -19,9 +21,11 @@ custom_derive! {
     }
 }
 
+type StoneMap = BTreeMap<Coordinate, Stone>;
+
 pub struct Game {
     id: u64,
-    board: BTreeMap<Coordinate, Stone>,
+    board: StoneMap,
     size: Size,
     turn: Stone
 }
@@ -76,42 +80,138 @@ impl Game {
     }
 
     fn valid_coordinate(&self, (x, y): Coordinate) -> bool {
-        x >= 0 && x < self.size as i8 && y >= 0 && y < self.size as i8
+        let extent = self.size as i8;
+        x >= 0 && x < extent && y >= 0 && y < extent
     }
 
-    fn free_tile(&self, position: Coordinate) -> bool {
-        !self.board.contains_key(&position)
+    // adjacent_positions just returns a list of valid adjacent coordinates.
+    fn adjacent_positions(&self, (x, y): Coordinate) -> Vec<Coordinate> {
+        [(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)]
+            .into_iter()
+            .filter(|coordinate| self.valid_coordinate(**coordinate))
+            .cloned()
+            .collect()
     }
 
-    fn neighbour_count(&self, (x, y): Coordinate, stone: Stone) -> usize {
-        let adjacent_tiles = [(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)];
-        adjacent_tiles.iter()
-            .map(|coordinate| { self.board.get(coordinate) })
-            .filter(|tile| tile.is_some())
-            .count()
+    // adjacent_liberties finds any adjacent tiles which do not contain a stone.
+    fn adjacent_liberties(&self, position: Coordinate) -> Vec<Coordinate> {
+        self.adjacent_positions(position)
+            .into_iter()
+            .filter(|c| self.board.get(c).is_none())
+            .collect()
     }
 
-    fn is_suicide(&self, (x, y): Coordinate, stone: Stone) -> bool {
-        self.neighbour_count((x, y), stone) > 0
+    // adjacent_stones returns a map of any adjacent stones.
+    fn adjacent_stones(&self, position: Coordinate) -> StoneMap {
+        self.adjacent_positions(position)
+            .into_iter()
+            .fold(StoneMap::new(), |mut accumulator, ref coordinate| {
+                if let Some(piece) = self.board.get(coordinate) {
+                    accumulator.entry(*coordinate).or_insert(*piece);
+                }
+                accumulator
+            })
+    }
+
+    // allies returns adjacent tiles that contain the same stone.
+    fn allies(&self, position: Coordinate, stone: Stone) -> StoneMap {
+        self.adjacent_stones(position)
+            .into_iter()
+            .filter(|&(_, piece)| piece == stone)
+            .collect()
+    }
+
+    // defenders returns adjacent tiles that contain the opponent's stones.
+    fn defenders(&self, position: Coordinate, stone: Stone) -> StoneMap {
+        self.adjacent_stones(position)
+            .into_iter()
+            .filter(|&(_, piece)| piece != stone)
+            .collect()
+    }
+
+    fn is_safe(&self, position: Coordinate, stone: Stone) -> bool {
+        self.adjacent_liberties(position).iter().count() > 0
+    }
+
+    fn is_suicide(&self, position: Coordinate, stone: Stone) -> bool {
+        !self.is_safe(position, stone)
     }
 
     fn can_play(&self, position: Coordinate, stone: Stone) -> bool {
         self.turn == stone &&
-            !self.is_suicide(position, stone) &&
             self.valid_coordinate(position) &&
-            self.free_tile(position)
+            !self.has_stone(position) &&
+            self.is_safe(position, stone)
     }
 
     fn advance_turn(&mut self) {
-        match self.turn {
-            Stone::Black => self.turn = Stone::White,
-            Stone::White => self.turn = Stone::Black,
+        self.turn = match self.turn {
+            Stone::Black => Stone::White,
+            Stone::White => Stone::Black,
+        }
+    }
+
+    // chain returns a map of positions of adjacent stones of the same color which form a 'chain'.
+    fn chain(&self, position: Coordinate, stone: Stone) -> StoneMap {
+        let mut chain = StoneMap::new();
+        chain.insert(position, stone);
+
+        let mut searched_tiles = HashSet::<Coordinate>::new(); 
+        let mut positions_to_search = Vec::<Coordinate>::new();
+        positions_to_search.push(position);
+
+        loop {
+            //println!("searched {:?}", searched_tiles);
+            //println!("positions_to_search {:?}", positions_to_search);
+
+            let position = match positions_to_search.pop() {
+                Some(position) => position,
+                None => return chain,
+            };
+
+            searched_tiles.insert(position);
+
+            let tile = self.board.get(&position);
+            match tile {
+                Some(search_stone) if *search_stone == stone => {
+                    let searchable_tiles = self.allies(position, stone);
+                    for (position, _) in searchable_tiles.iter() {
+                        if !searched_tiles.contains(position) {
+                            //println!("haven't searched {:?}, adding", position);
+                            positions_to_search.push(*position);
+                        }
+                    }
+                },
+                _ => ()
+            }
+        }
+    }
+
+    // remove_chain removes all pieces in a chain from the board.
+    fn remove_chain(&mut self, chain: StoneMap) {
+        for (position, stone) in chain.iter() {
+            self.board.remove(position);
+        }
+    }
+
+    // capture_stones removes any defenders from the board that no longer have any liberties.
+    fn capture_stones(&mut self, position: Coordinate, stone: Stone) {
+        let defenders = self.defenders(position, stone);
+        //println!("stone {:?} has defenders: {:?}", stone, defenders);
+
+        for (position, stone) in defenders.iter() {
+            let chain = self.chain(*position, *stone);
+            //println!("determining if chain {:?} has any liberties", chain);
+            if chain.iter().all(|(position, stone)| !self.is_safe(*position, *stone)) {
+                self.remove_chain(chain);
+            }
         }
     }
 
     pub fn play_stone(&mut self, position: Coordinate, stone: Stone) -> bool {
         if self.can_play(position, stone) {
             self.board.insert(position, stone);
+            self.capture_stones(position, stone);
             self.advance_turn();
             true
         } else {
@@ -220,3 +320,38 @@ b.......b
     assert_eq!(false, game.play_stone((9, 0), Stone::White));
     assert_eq!(false, game.play_stone((9, 9), Stone::White));
 }
+
+#[test]
+fn test_play_stone_empty_neighbour() {
+    let mut game = parse("
+.b.....b.
+b.bbbbbb.
+.b....bbb
+..bbb.b..
+.....b...
+.........
+.........
+b.......b
+.b.....b.", Stone::White).unwrap();
+
+    assert_eq!(true, game.play_stone((2, 0), Stone::White));
+}
+
+#[test]
+fn test_play_stone_capture_piece() {
+    let mut game = parse("
+.........
+bwb......
+.b.......
+.........
+.........
+.........
+.........
+.........
+.........", Stone::Black).unwrap();
+
+    assert_eq!(true, game.play_stone((1, 0), Stone::Black));
+    assert_eq!(false, game.has_stone((1, 1)));
+    assert_eq!(Stone::Black, game.winner());
+}
+
