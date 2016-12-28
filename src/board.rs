@@ -1,6 +1,7 @@
 use conv::TryFrom;
-use std::collections::btree_map::BTreeMap;
 use std::collections::HashSet;
+use std::collections::btree_map::BTreeMap;
+use std::fmt;
 use std::iter::Iterator;
 
 pub type Coordinate = (i8, i8);
@@ -240,6 +241,24 @@ impl Game {
     }
 }
 
+impl fmt::Debug for Game {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let extent = self.size as i8;
+        try!(formatter.write_str("\n\n"));
+        for row in 0..extent {
+            for column in 0..extent {
+                try!(formatter.write_str(match self.board.get(&(column, row)) {
+                    Some(&Stone::Black) => "b",
+                    Some(&Stone::White) => "w",
+                    None => ".",
+                }))
+            }
+            try!(formatter.write_str("\n"));
+        }
+        formatter.write_str("\n")
+    }
+}
+
 #[test]
 fn test_new() {
     let game = new(Size::Nine);
@@ -270,9 +289,12 @@ fn test_play_stone_switches_players() {
 #[test]
 fn test_play_stone_rejects_invalid_plays() {
     let mut game = new(Size::Nine);
-    assert_eq!(false, game.play_stone((10, 0), Stone::Black));
-    assert_eq!(false, game.play_stone((10, 10), Stone::Black));
-    assert_eq!(false, game.play_stone((0, 10), Stone::Black));
+    assert_eq!(false, game.play_stone((-1, 0), Stone::Black));
+    assert_eq!(false, game.play_stone((-1, -1), Stone::Black));
+    assert_eq!(false, game.play_stone((0, -1), Stone::Black));
+    assert_eq!(false, game.play_stone((9, 0), Stone::Black));
+    assert_eq!(false, game.play_stone((9, 9), Stone::Black));
+    assert_eq!(false, game.play_stone((0, 9), Stone::Black));
 }
 
 #[test]
@@ -307,18 +329,28 @@ fn test_play_stone_no_liberties() {
 .b.....b.
 b.bbbbbb.
 .b....bbb
-..bbb.b..
+..bbbbb..
 .....b...
 .........
 .........
 b.......b
 .b.....b.", Stone::White).unwrap();
 
+    // Top left corner
     assert_eq!(false, game.play_stone((0, 0), Stone::White));
+
+    // Surrounded stone
     assert_eq!(false, game.play_stone((1, 1), Stone::White));
-    assert_eq!(false, game.play_stone((1, 2), Stone::White));
-    assert_eq!(false, game.play_stone((9, 0), Stone::White));
-    assert_eq!(false, game.play_stone((9, 9), Stone::White));
+
+    // Bottom right corner
+    assert_eq!(false, game.play_stone((8, 8), Stone::White));
+
+    // Bottom left corner
+    assert_eq!(false, game.play_stone((0, 8), Stone::White));
+
+    // Top right corner
+    assert_eq!(true, game.play_stone((8, 0), Stone::White));
+    assert_eq!(false, game.play_stone((8, 1), Stone::White));
 }
 
 #[test]
