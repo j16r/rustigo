@@ -6,4 +6,8 @@ authors = ["John Barker <jebarker@gmail.com>"]
 [dependencies]
 conv = "0.3.1"
 custom_derive = "0.1.2"
+iron = "*"
+mount = "*"
+router = "*"
+staticfile = "*"
 ws = "0.4.1"

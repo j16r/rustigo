@@ -15,7 +15,7 @@
     } else {
       new_uri = "ws:";
     }
-    new_uri += "//" + uri.host;
+    new_uri += "//" + uri.hostname + ":3012";
     new_uri += uri.pathname + "/ws";
 
     var socket = new WebSocket(new_uri);
