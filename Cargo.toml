@@ -4,10 +4,10 @@ version = "0.1.0"
 authors = ["John Barker <jebarker@gmail.com>"]
 
 [dependencies]
-conv = "0.3.1"
-custom_derive = "0.1.2"
+conv = "*"
+custom_derive = "*"
 iron = "*"
 mount = "*"
 router = "*"
 staticfile = "*"
-ws = "0.4.1"
+ws = "*"
