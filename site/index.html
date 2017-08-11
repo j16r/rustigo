@@ -1,30 +1,53 @@
 <!doctype html>
 
-<html lang="en">
-<head>
-  <meta charset="utf-8">
+<html lang="en" style="height: 100%">
+  <head>
+    <meta charset="utf-8">
 
-  <title>Go</title>
-  <meta name="description" content="Go">
+    <title>Go</title>
+    <meta name="description" content="Go">
 
-  <script>
-    var uri = window.location;
-    var new_uri;
-    if (uri.protocol === "https:") {
-      new_uri = "wss:";
-    } else {
-      new_uri = "ws:";
-    }
-    new_uri += "//" + uri.hostname + ":3012";
-    new_uri += uri.pathname + "/ws";
+    <script>
+var uri = window.location;
+var new_uri;
+if (uri.protocol === "https:") {
+  new_uri = "wss:";
+} else {
+  new_uri = "ws:";
+}
+new_uri += "//" + uri.hostname + ":3012";
+new_uri += uri.pathname + "/ws";
 
-    var socket = new WebSocket(new_uri);
-    socket.onmessage = function(event) {
-      console.log(event.data);
-    }
-  </script>
-</head>
+var socket = new WebSocket(new_uri);
+socket.onmessage = function(event) {
+  console.log(event.data);
+}
 
-<body>
-</body>
+window.onload = function() {
+  document.getElementById('menu').style.cssText = 'display: block';
+};
+
+let beginGame = function() {
+  document.getElementById('menu').style.cssText = 'display: none';
+  document.getElementById('game').style.cssText = 'display: block';
+};
+    </script>
+  </head>
+
+  <body style="height: 100%; margin: 0">
+
+    <section style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 0; margin: 0">
+      <form id="menu" style="display: none">
+        <input type="radio" name="size" value="9">9x9</input>
+        <input type="radio" name="size" value="13">13x13</input>
+        <input type="radio" name="size" value="17">17x17</input>
+        <input type="radio" name="size" value="19">19x19</input>
+        <input type="button" value="Begin game" onclick="beginGame();" keydown="beginGame();">
+      </form>
+    </section>
+
+    <section id="game" style="display: none">
+    </section>
+
+  </body>
 </html>
