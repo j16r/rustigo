@@ -6,6 +6,31 @@
 
     <title>Go</title>
     <meta name="description" content="Go">
+    <style>
+
+#board {
+  border: 1px black solid;
+}
+
+#board div {
+  display: block;
+  height: 64px;
+}
+
+#board span {
+  display: inline-block;
+  height: 64px;
+  width: 64px;
+}
+
+#board span.odd {
+  background: #000;
+}
+
+#board span.even {
+  background: #fff;
+}
+    </style>
 
     <script>
 var uri = window.location;
@@ -24,12 +49,40 @@ socket.onmessage = function(event) {
 }
 
 window.onload = function() {
-  document.getElementById('menu').style.cssText = 'display: block';
+  let hash = document.location.hash;
+  if(hash !== '') {
+    drawBoard(hash.substring(1));
+  } else {
+    document.getElementById('menu').style.cssText = 'display: block';
+  }
+};
+
+let drawBoard = function(size) {
+  let menu = document.getElementById('menu');
+  menu.style.cssText = 'display: none';
+  document.getElementById('game').style.cssText = 'display: block';
+
+  let board = document.getElementById('board');
+  for(let y = 0; y < size; y++) {
+    let row = board.appendChild(document.createElement('div'));
+    for(let x = 0; x < size; x++) {
+      let tile = document.createElement('span');
+      if((x & 1) == (y & 1)) {
+        tile.className = 'odd';
+      } else {
+        tile.className = 'even';
+      }
+      row.appendChild(tile);
+    }
+  }
 };
 
 let beginGame = function() {
-  document.getElementById('menu').style.cssText = 'display: none';
-  document.getElementById('game').style.cssText = 'display: block';
+  let checked = document.querySelector('input[name=size]:checked');
+  if(checked) {
+    document.location.hash = checked.value;
+    drawBoard(checked.value);
+  }
 };
     </script>
   </head>
@@ -44,9 +97,11 @@ let beginGame = function() {
         <input type="radio" name="size" value="19">19x19</input>
         <input type="button" value="Begin game" onclick="beginGame();" keydown="beginGame();">
       </form>
-    </section>
 
-    <section id="game" style="display: none">
+      <div id="game" style="display: none;">
+        <section id="board" style="height: 100%">
+        </section>
+      </section>
     </section>
 
   </body>
