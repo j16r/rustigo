@@ -7,34 +7,31 @@
     <title>Go</title>
     <meta name="description" content="Go">
     <style>
-
-#board {
-  border: 1px black solid;
+span.black::before {
+  top: 0;
+  left: 0;
+  content: "";
+  position: absolute;
+  background-image: url("images/blackpiece.png");
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
 
-#board div {
-  display: block;
-  height: 64px;
-}
-
-#board span {
-  display: inline-block;
-  height: 64px;
-  width: 64px;
-}
-
-#board span.odd {
-  background: #000;
-}
-
-#board span.even {
-  background: #fff;
+span.white::before {
+  top: 0;
+  left: 0;
+  content: "";
+  position: absolute;
+  background-image: url("images/whitepiece.png");
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
     </style>
-
     <script>
-var uri = window.location;
-var new_uri;
+let uri = window.location;
+let new_uri;
 if (uri.protocol === "https:") {
   new_uri = "wss:";
 } else {
@@ -43,7 +40,7 @@ if (uri.protocol === "https:") {
 new_uri += "//" + uri.hostname + ":3012";
 new_uri += uri.pathname + "/ws";
 
-var socket = new WebSocket(new_uri);
+let socket = new WebSocket(new_uri);
 socket.onmessage = function(event) {
   console.log(event.data);
 }
@@ -57,20 +54,51 @@ window.onload = function() {
   }
 };
 
+let getElementByXPath = function(query) {
+  console.log(query);
+  return document.evaluate(query, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+}
+
 let drawBoard = function(size) {
+  let player = 'white';
+
+  let getTile = function(x, y) {
+    return getElementByXPath('//div[position()=' + (y + 1) + ']/span[position()=' + (x + 1) + ']');
+  }
+
+  let placeTile = function(x, y) {
+    console.log('placing tile at', x, y);
+    let tile = getTile(x, y);
+    if(tile !== null) {
+      console.log('tile', tile);
+      tile.classList.add(player);
+      if(player === 'white') {
+        player = 'black';
+      } else {
+        player = 'white';
+      }
+    }
+  }
+
   let menu = document.getElementById('menu');
   menu.style.cssText = 'display: none';
   document.getElementById('game').style.cssText = 'display: block';
 
+  const pieceSize = 80.0 / size;
+
   let board = document.getElementById('board');
   for(let y = 0; y < size; y++) {
     let row = board.appendChild(document.createElement('div'));
+    row.style.cssText = 'height: ' + pieceSize + 'vmin; display: block';
     for(let x = 0; x < size; x++) {
       let tile = document.createElement('span');
-      if((x & 1) == (y & 1)) {
-        tile.className = 'odd';
-      } else {
-        tile.className = 'even';
+      tile.style.cssText = 'display: inline-block; height: ' + 
+        pieceSize + 'vmin; width: ' + 
+        pieceSize + 'vmin; background-size: ' +
+        pieceSize + 'vmin; background-image: url("images/tilecenter.png");' +
+        'position: relative; z-index: 1;';
+      tile.onclick = function() {
+        placeTile(x, y);
       }
       row.appendChild(tile);
     }
@@ -99,7 +127,7 @@ let beginGame = function() {
       </form>
 
       <div id="game" style="display: none;">
-        <section id="board" style="height: 100%">
+        <section id="board" style="height: 100%;">
         </section>
       </section>
     </section>

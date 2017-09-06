@@ -40,7 +40,7 @@ fn redirect_to_root(req: &mut Request) -> IronResult<Response> {
 }
 
 fn web_server_start() {
-    println!("starting web server on :8080");
+    println!("starting web server on http://localhost:8080/");
 
     let mut router = Router::new();
     router.get("/", redirect_to_root, "index");
@@ -48,7 +48,7 @@ fn web_server_start() {
     let mut mount = Mount::new();
     mount
         .mount("/", router)
-        .mount("/index.html", Static::new(Path::new("site/index.html")));
+        .mount("/", Static::new(Path::new("site/")));
 
     Iron::new(mount)
         .http("0.0.0.0:8080")
