@@ -63,8 +63,10 @@ let getElementByXPath = function(query) {
 
 let drawBoard = function(size) {
   let httpRequest = new XMLHttpRequest();
-  httpRequest.open('POST', '/games?size=' + size, true);
-  httpRequest.send();
+  httpRequest.open('POST', '/games', true);
+  httpRequest.setRequestHeader('Content-Type', 'application/json');
+  httpRequest.setRequestHeader('Accept', 'application/json');
+  httpRequest.send(JSON.stringify({size: parseInt(size, 10)}));
 
   let player = 'white';
 
@@ -98,8 +100,8 @@ let drawBoard = function(size) {
     row.style.cssText = 'height: ' + pieceSize + 'vmin; display: block';
     for(let x = 0; x < size; x++) {
       let tile = document.createElement('span');
-      tile.style.cssText = 'display: inline-block; height: ' + 
-        pieceSize + 'vmin; width: ' + 
+      tile.style.cssText = 'display: inline-block; height: ' +
+        pieceSize + 'vmin; width: ' +
         pieceSize + 'vmin; background-size: ' +
         pieceSize + 'vmin; background-image: url("images/tilecenter.png");' +
         'position: relative; z-index: 1;';

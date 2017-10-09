@@ -1,95 +1,91 @@
-extern crate iron;
-extern crate logger;
-extern crate mount;
-#[macro_use]
-extern crate router;
-extern crate staticfile;
+#![feature(plugin)]
+#![plugin(rocket_codegen)]
+
+//extern crate logger;
 extern crate ws;
 #[macro_use] extern crate conv;
 #[macro_use] extern crate custom_derive;
 extern crate env_logger;
-extern crate urlencoded;
+extern crate rocket;
+extern crate rocket_contrib;
 
 mod board;
 
-use iron::prelude::*;
-use iron::modifiers::Redirect;
-use iron::status;
-use iron::{Iron, Request, Response, IronResult, Url, Chain};
-use logger::Logger;
-use mount::Mount;
-use router::Router;
-use staticfile::Static;
-use ws::listen;
-use urlencoded::UrlEncodedQuery;
-
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::thread;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+use rocket::response::{NamedFile, Redirect};
+use rocket::http::Status;
+use rocket_contrib::json::Json;
+//use logger::Logger;
+use ws::listen;
+use conv::TryFrom;
+
+#[get("/")]
+fn redirect_to_root() -> Redirect {
+    Redirect::to("/index.html")
+}
+
+#[get("/index.html")]
+fn serve_static_index() -> Option<NamedFile> {
+    NamedFile::open(Path::new("site/index.html")).ok()
+}
+
+#[get("/images/<file..>")]
+fn serve_static_image(file: PathBuf) -> Option<NamedFile> {
+    NamedFile::open(Path::new("site/images/").join(file)).ok()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NewGameMessage {
+    pub size: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameCreatedMessage {
+    pub board: String,
+}
+
+#[post("/games", format = "application/json", data = "<message>")]
+fn create_game(message: Json<NewGameMessage>) -> Result<Json<GameCreatedMessage>, Status> {
+    match board::Size::try_from(message.size) {
+        Ok(size) => {
+            let game = board::new(size);
+            Ok(Json(GameCreatedMessage{
+                board: format!("{:?}", game),
+            }))
+        },
+        _ => return Err(Status::UnprocessableEntity),
+    }
+}
 
 fn websocket_server_start() {
-    println!("starting websocket server on :3012");
+    println!("Starting websocket server on :3012");
 
     if let Err(error) = listen("0.0.0.0:3012", |out| {
-        move |msg| {
-            println!("Server got message '{}'. ", msg);
-            out.send(msg)
+        move |message| {
+            println!("Server got message '{}'. ", message);
+            out.send(message)
         }
     }) {
         println!("Failed to create WebSocket due to {:?}", error);
     }
 }
 
-fn redirect_to_root(req: &mut Request) -> IronResult<Response> {
-    let redirect_url_str = format!("{}index.html", req.url);
-    let url = Url::parse(&redirect_url_str).unwrap();
-
-    Ok(Response::with((status::MovedPermanently, Redirect(url))))
-}
-
-fn create_game(req: &mut Request) -> IronResult<Response> {
-    match req.get_ref::<UrlEncodedQuery>() {
-        Ok(ref hashmap) => {
-            match hashmap.get("size") {
-                Some(ref values) => {
-                    if values.len() != 1 {
-                        return Ok(Response::with(status::UnprocessableEntity));
-                    }
-
-                    match values[0].parse::<u8>() {
-                        Ok(ref value) => {
-                            Ok(Response::with((status::Ok, "hello")))
-                        },
-                        Err(ref e) => return Ok(Response::with(status::UnprocessableEntity)),
-                    }
-                },
-                None => return Ok(Response::with(status::UnprocessableEntity)),
-            }
-        },
-        Err(ref e) => return Ok(Response::with(status::UnprocessableEntity)),
-    }
-}
-
 fn web_server_start() {
-    println!("starting web server on http://localhost:8080/");
+    let config = rocket::config::Config::build(rocket::config::Environment::Development)
+        .port(8080)
+        .finalize().expect("Could not create config");
 
-    let router = router!(
-        index: get "/" => redirect_to_root,
-        post: post "/games" => create_game);
-
-    let mut mount = Mount::new();
-    mount
-        .mount("/", router)
-        .mount("/images/", Static::new(Path::new("site/images/")))
-        .mount("/index.html", Static::new(Path::new("site/index.html")));
-
-    let (logger_before, logger_after) = Logger::new(None);
-    let mut chain = Chain::new(mount);
-    chain.link_before(logger_before);
-    chain.link_after(logger_after);
-
-    Iron::new(chain)
-        .http("0.0.0.0:8080")
-        .unwrap_or_else(|error| panic!("Unable to start server: {}", error));
+    rocket::custom(config, false)
+        .mount("/", routes![
+               redirect_to_root,
+               serve_static_index,
+               serve_static_image,
+               create_game])
+        .launch();
 }
 
 fn main() {

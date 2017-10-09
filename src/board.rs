@@ -13,7 +13,7 @@ pub enum Stone {
 }
 
 custom_derive! {
-    #[derive(Debug, Copy, Clone, TryFrom(usize))]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, TryFrom(usize))]
     pub enum Size {
         Nine = 9,
         Thirteen = 13,
@@ -157,7 +157,7 @@ impl Game {
         let mut chain = StoneMap::new();
         chain.insert(position, stone);
 
-        let mut searched_tiles = HashSet::<Coordinate>::new(); 
+        let mut searched_tiles = HashSet::<Coordinate>::new();
         let mut positions_to_search = Vec::<Coordinate>::new();
         positions_to_search.push(position);
 
