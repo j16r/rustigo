@@ -44,18 +44,40 @@ pub struct NewGameMessage {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GameCreatedMessage {
+pub struct GameStateMessage {
     pub board: String,
 }
 
 #[post("/games", format = "application/json", data = "<message>")]
-fn create_game(message: Json<NewGameMessage>) -> Result<Json<GameCreatedMessage>, Status> {
+fn create_game(message: Json<NewGameMessage>) -> Result<Json<GameStateMessage>, Status> {
     match board::Size::try_from(message.size) {
         Ok(size) => {
             let game = board::new(size);
-            Ok(Json(GameCreatedMessage{
+            Ok(Json(GameStateMessage{
                 board: format!("{:?}", game),
             }))
+        },
+        _ => return Err(Status::UnprocessableEntity),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlacePieceMessage {
+    pub board: String,
+    pub coordinate: board::Coordinate,
+}
+
+#[put("/games", format = "application/json", data = "<message>")]
+fn play_piece(message: Json<PlacePieceMessage>) -> Result<Json<GameStateMessage>, Status> {
+    match board::parse(&message.board, board::Stone::Black) {
+        Some(mut game) => {
+            if game.play_stone(message.coordinate, board::Stone::Black) {
+                Ok(Json(GameStateMessage{
+                    board: format!("{:?}", game),
+                }))
+            } else {
+                return Err(Status::UnprocessableEntity);
+            }
         },
         _ => return Err(Status::UnprocessableEntity),
     }
@@ -84,7 +106,8 @@ fn web_server_start() {
                redirect_to_root,
                serve_static_index,
                serve_static_image,
-               create_game])
+               create_game,
+               play_piece])
         .launch();
 }
 
