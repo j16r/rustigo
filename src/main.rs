@@ -1,20 +1,27 @@
 extern crate iron;
+extern crate logger;
 extern crate mount;
+#[macro_use]
 extern crate router;
 extern crate staticfile;
 extern crate ws;
 #[macro_use] extern crate conv;
 #[macro_use] extern crate custom_derive;
+extern crate env_logger;
+extern crate urlencoded;
 
 mod board;
 
+use iron::prelude::*;
 use iron::modifiers::Redirect;
 use iron::status;
-use iron::{Iron, Request, Response, IronResult, Url};
+use iron::{Iron, Request, Response, IronResult, Url, Chain};
+use logger::Logger;
 use mount::Mount;
 use router::Router;
 use staticfile::Static;
 use ws::listen;
+use urlencoded::UrlEncodedQuery;
 
 use std::path::Path;
 use std::thread;
@@ -39,23 +46,55 @@ fn redirect_to_root(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((status::MovedPermanently, Redirect(url))))
 }
 
+fn create_game(req: &mut Request) -> IronResult<Response> {
+    match req.get_ref::<UrlEncodedQuery>() {
+        Ok(ref hashmap) => {
+            match hashmap.get("size") {
+                Some(ref values) => {
+                    if values.len() != 1 {
+                        return Ok(Response::with(status::UnprocessableEntity));
+                    }
+
+                    match values[0].parse::<u8>() {
+                        Ok(ref value) => {
+                            Ok(Response::with((status::Ok, "hello")))
+                        },
+                        Err(ref e) => return Ok(Response::with(status::UnprocessableEntity)),
+                    }
+                },
+                None => return Ok(Response::with(status::UnprocessableEntity)),
+            }
+        },
+        Err(ref e) => return Ok(Response::with(status::UnprocessableEntity)),
+    }
+}
+
 fn web_server_start() {
     println!("starting web server on http://localhost:8080/");
 
-    let mut router = Router::new();
-    router.get("/", redirect_to_root, "index");
+    let router = router!(
+        index: get "/" => redirect_to_root,
+        post: post "/games" => create_game);
 
     let mut mount = Mount::new();
     mount
         .mount("/", router)
-        .mount("/", Static::new(Path::new("site/")));
+        .mount("/images/", Static::new(Path::new("site/images/")))
+        .mount("/index.html", Static::new(Path::new("site/index.html")));
 
-    Iron::new(mount)
+    let (logger_before, logger_after) = Logger::new(None);
+    let mut chain = Chain::new(mount);
+    chain.link_before(logger_before);
+    chain.link_after(logger_after);
+
+    Iron::new(chain)
         .http("0.0.0.0:8080")
         .unwrap_or_else(|error| panic!("Unable to start server: {}", error));
 }
 
 fn main() {
+    env_logger::init().unwrap();
+
     let websocket_handler = thread::spawn(|| {
         websocket_server_start();
     });

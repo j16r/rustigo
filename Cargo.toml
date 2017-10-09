@@ -6,8 +6,11 @@ authors = ["John Barker <jebarker@gmail.com>"]
 [dependencies]
 conv = "*"
 custom_derive = "*"
+env_logger = "*"
 iron = "*"
+logger = "*"
 mount = "*"
 router = "*"
 staticfile = "*"
+urlencoded = "*"
 ws = "*"
