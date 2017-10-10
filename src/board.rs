@@ -6,7 +6,7 @@ use std::iter::Iterator;
 
 pub type Coordinate = (i8, i8);
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Serialize, Deserialize, Clone)]
 pub enum Stone {
     Black,
     White
@@ -39,6 +39,7 @@ pub fn new(size: Size) -> Game {
         turn: Stone::Black}
 }
 
+// parse creates a new game from a simple human readable string representation.
 pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
     let mut board = BTreeMap::new();
     let lines : Vec<&str> = board_str.trim().split("\n").collect();
@@ -73,6 +74,68 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
         board: board,
         size: size,
         turn: turn})
+}
+
+// decode reads in the wire transfer format of the game.
+pub fn decode(game_str: &str) -> Option<Game> {
+    let segments : Vec<&str> = game_str.trim().split(";").collect();
+
+    let size_value = match segments[0].parse::<usize>() {
+        Ok(size_value) => size_value,
+        _ => return None,
+    };
+    let size = match Size::try_from(size_value) {
+        Ok(size) => size,
+        _ => return None,
+    };
+
+    let mut board = BTreeMap::new();
+    for (index, tile) in segments[1].chars().enumerate() {
+        let x = index % size_value;
+        let y = index / size_value;
+        match tile {
+            'b' => { board.insert((x as i8, y as i8), Stone::Black); },
+            'w' => { board.insert((x as i8, y as i8), Stone::White); },
+            _ => (),
+        };
+    };
+
+    let turn = match segments[2] {
+        "b" => Stone::Black,
+        "w" => Stone::White,
+        _ => return None,
+    };
+
+    Some(Game{
+        id: 0,
+        board: board,
+        size: size,
+        turn: turn})
+}
+
+// encode produces a tightly packed ASCII safe representation of a game that can be shipped over
+// the wire safely.
+pub fn encode(game: &Game) -> String {
+    let mut output = "".to_string();
+
+    let extent = game.size as i8;
+    output.push_str(&*format!("{};", extent));
+
+    for row in 0..extent {
+        for column in 0..extent {
+            output.push_str(match game.board.get(&(column, row)) {
+                Some(&Stone::Black) => "b",
+                Some(&Stone::White) => "w",
+                None => ".",
+            });
+        }
+    }
+    output.push_str(";");
+    match game.turn {
+        Stone::Black => output.push_str("b"),
+        Stone::White => output.push_str("w"),
+    };
+    output
 }
 
 impl Game {

@@ -56,6 +56,39 @@ window.onload = function() {
   }
 };
 
+window.onhashchange = function() {
+  let message = document.location.hash.substring(1);
+
+  let size = parseInt(message, 10);
+
+  console.log('size', size);
+  let offset = message.indexOf(';') + 1;
+  let i = offset;
+  for(; i < message.indexOf(';', i); i++) {
+    let piece = message[i];
+
+    let tile = getTile((i - offset) % size, Math.floor((i - offset) / size));
+    if(tile !== null) {
+      if(piece == 'b') {
+        tile.classList.add('black');
+      } else if (piece == 'w') {
+        tile.classList.add('white');
+      }
+    }
+  }
+
+  console.log(message[i + 1]);
+  if(message[i + 1] == 'w') {
+    player = 'White';
+  } else {
+    player = 'Black';
+  }
+}
+
+let getTile = function(x, y) {
+  return getElementByXPath('//div[position()=' + (y + 1) + ']/span[position()=' + (x + 1) + ']');
+}
+
 let getElementByXPath = function(query) {
   return document.evaluate(query, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 }
@@ -82,60 +115,17 @@ let post = function(path, message, onload=null) {
   return request('POST', path, message, onload);
 }
 
-let emptyBoard = `
-.........
-.........
-.........
-.........
-.........
-.........
-.........
-.........
-.........`;
+let player = 'Black';
 
-let drawBoard = function(size) {
-  post('/games', {size: parseInt(size, 10)});
-
-  let player = 'white';
-
-  let getTile = function(x, y) {
-    return getElementByXPath('//div[position()=' + (y + 1) + ']/span[position()=' + (x + 1) + ']');
-  }
+let drawBoard = function(ssize) {
+  let size = parseInt(ssize, 10);
+  post('/games', {size: size});
 
   let placeTile = function(x, y) {
-    put('/games', {board: emptyBoard, coordinate: [x, y]}, function(message) {
-      let i = 0;
-      for(; i < message.board.length; i++) {
-        let piece = message.board[i];
-        if(piece == '.' || piece == 'b' || piece == 'w') {
-          break;
-        }
-      }
-
-      let scanx = 0;
-      let scany = 0;
-
-      for(; i < message.board.length; i++) {
-        let piece = message.board[i];
-        if(piece == 'b') {
-          let tile = getTile(scanx, scany);
-          if(tile !== null) {
-            tile.classList.add('black');
-          }
-          scanx += 1;
-        } else if (piece == 'w') {
-          let tile = getTile(scanx, scany);
-          if(tile !== null) {
-            tile.classList.add('white');
-          }
-          scanx += 1;
-        } else if (piece == '.') {
-          scanx += 1;
-        } else if (piece == '\n') {
-          scany += 1;
-          scanx = 0;
-        }
-      }
+    let gameBoard = document.location.hash.substring(1);
+    let place_piece_message = {board: gameBoard, coordinate: [x, y], stone: player};
+    put('/games', place_piece_message, function(message) {
+      document.location.hash = message.board;
     });
   }
 
@@ -167,8 +157,11 @@ let drawBoard = function(size) {
 let beginGame = function() {
   let checked = document.querySelector('input[name=size]:checked');
   if(checked) {
-    document.location.hash = checked.value;
-    drawBoard(checked.value);
+    let size = parseInt(checked.value, 10);
+    post('/games', {size: size}, function(game) {
+      drawBoard(game.board);
+      document.location.hash = game.board;
+    });
   }
 };
     </script>

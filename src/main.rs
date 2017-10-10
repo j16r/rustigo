@@ -54,7 +54,7 @@ fn create_game(message: Json<NewGameMessage>) -> Result<Json<GameStateMessage>, 
         Ok(size) => {
             let game = board::new(size);
             Ok(Json(GameStateMessage{
-                board: format!("{:?}", game),
+                board: board::encode(&game),
             }))
         },
         _ => return Err(Status::UnprocessableEntity),
@@ -65,17 +65,19 @@ fn create_game(message: Json<NewGameMessage>) -> Result<Json<GameStateMessage>, 
 pub struct PlacePieceMessage {
     pub board: String,
     pub coordinate: board::Coordinate,
+    pub stone : board::Stone,
 }
 
 #[put("/games", format = "application/json", data = "<message>")]
 fn play_piece(message: Json<PlacePieceMessage>) -> Result<Json<GameStateMessage>, Status> {
-    match board::parse(&message.board, board::Stone::Black) {
+    match board::decode(&message.board) {
         Some(mut game) => {
-            if game.play_stone(message.coordinate, board::Stone::Black) {
+            if game.play_stone(message.coordinate, message.stone) {
                 Ok(Json(GameStateMessage{
-                    board: format!("{:?}", game),
+                    board: board::encode(&game),
                 }))
             } else {
+                println!("Invalid play {:?}:{:?}", message.coordinate, message.stone);
                 return Err(Status::UnprocessableEntity);
             }
         },
