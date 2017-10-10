@@ -143,12 +143,16 @@ impl Game {
         self.turn
     }
 
+    // valid_coordinate determines if a coordinate is within the bounds of the game board.
     fn valid_coordinate(&self, (x, y): Coordinate) -> bool {
         let extent = self.size as i8;
         x >= 0 && x < extent && y >= 0 && y < extent
     }
 
-    // adjacent_positions just returns a list of valid adjacent coordinates.
+    // adjacent_positions returns a list of valid adjacent coordinates.
+    //
+    // e.g:
+    //  (0, 0) => [(1, 0), (0, 1]
     fn adjacent_positions(&self, (x, y): Coordinate) -> Vec<Coordinate> {
         [(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)]
             .into_iter()
@@ -158,6 +162,8 @@ impl Game {
     }
 
     // adjacent_liberties finds any adjacent tiles which do not contain a stone.
+    // TODO: this also needs to check if the empty tile has a neighbouring tile which forms a chain
+    // to another free tile.
     fn adjacent_liberties(&self, position: Coordinate) -> Vec<Coordinate> {
         self.adjacent_positions(position)
             .into_iter()
@@ -224,30 +230,29 @@ impl Game {
         let mut positions_to_search = Vec::<Coordinate>::new();
         positions_to_search.push(position);
 
+        println!("looking for chain at {:?}", position);
         loop {
-            //println!("searched {:?}", searched_tiles);
-            //println!("positions_to_search {:?}", positions_to_search);
+            println!("searched {:?}", searched_tiles);
+            println!("positions_to_search {:?}", positions_to_search);
 
             let position = match positions_to_search.pop() {
                 Some(position) => position,
-                None => return chain,
+                None => {
+                    println!("chain {:?}", chain);
+                    return chain;
+                },
             };
 
-            searched_tiles.insert(position);
-
-            let tile = self.board.get(&position);
-            match tile {
-                Some(search_stone) if *search_stone == stone => {
-                    let searchable_tiles = self.allies(position, stone);
-                    for (position, _) in searchable_tiles.iter() {
-                        if !searched_tiles.contains(position) {
-                            //println!("haven't searched {:?}, adding", position);
-                            positions_to_search.push(*position);
-                        }
-                    }
-                },
-                _ => ()
+            let searchable_tiles = self.allies(position, stone);
+            for (position, _) in searchable_tiles.iter() {
+                if !searched_tiles.contains(position) {
+                    println!("haven't searched {:?}, adding", position);
+                    positions_to_search.push(*position);
+                    chain.insert(*position, stone);
+                }
             }
+
+            searched_tiles.insert(position);
         }
     }
 
@@ -261,11 +266,11 @@ impl Game {
     // capture_stones removes any defenders from the board that no longer have any liberties.
     fn capture_stones(&mut self, position: Coordinate, stone: Stone) {
         let defenders = self.defenders(position, stone);
-        //println!("stone {:?} has defenders: {:?}", stone, defenders);
+        println!("stone {:?} has defenders: {:?}", stone, defenders);
 
         for (position, stone) in defenders.iter() {
             let chain = self.chain(*position, *stone);
-            //println!("determining if chain {:?} has any liberties", chain);
+            println!("determining if chain {:?} has any liberties", chain);
             if chain.iter().all(|(position, stone)| !self.is_safe(*position, *stone)) {
                 self.remove_chain(chain);
             }
