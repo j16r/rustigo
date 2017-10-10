@@ -50,18 +50,18 @@ socket.onmessage = function(event) {
 window.onload = function() {
   let hash = document.location.hash;
   if(hash !== '') {
-    drawBoard(hash.substring(1));
+    let message = hash.substring(1);
+    let size = parseInt(message, 10);
+    drawBoard(size);
+    updateState(message);
   } else {
     document.getElementById('menu').style.cssText = 'display: block';
   }
 };
 
-window.onhashchange = function() {
-  let message = document.location.hash.substring(1);
-
+let updateState = function(message) {
   let size = parseInt(message, 10);
 
-  console.log('size', size);
   let offset = message.indexOf(';') + 1;
   let i = offset;
   for(; i < message.indexOf(';', i); i++) {
@@ -73,16 +73,22 @@ window.onhashchange = function() {
         tile.classList.add('black');
       } else if (piece == 'w') {
         tile.classList.add('white');
+      } else {
+        tile.classList.remove('white', 'black');
       }
     }
   }
 
-  console.log(message[i + 1]);
   if(message[i + 1] == 'w') {
     player = 'White';
   } else {
     player = 'Black';
   }
+}
+
+window.onhashchange = function() {
+  let message = document.location.hash.substring(1);
+  updateState(message);
 }
 
 let getTile = function(x, y) {
@@ -117,10 +123,7 @@ let post = function(path, message, onload=null) {
 
 let player = 'Black';
 
-let drawBoard = function(ssize) {
-  let size = parseInt(ssize, 10);
-  post('/games', {size: size});
-
+let drawBoard = function(size) {
   let placeTile = function(x, y) {
     let gameBoard = document.location.hash.substring(1);
     let place_piece_message = {board: gameBoard, coordinate: [x, y], stone: player};
@@ -158,8 +161,9 @@ let beginGame = function() {
   let checked = document.querySelector('input[name=size]:checked');
   if(checked) {
     let size = parseInt(checked.value, 10);
+    drawBoard(size);
     post('/games', {size: size}, function(game) {
-      drawBoard(game.board);
+      console.log('game', game);
       document.location.hash = game.board;
     });
   }
