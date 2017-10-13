@@ -199,21 +199,20 @@ impl Game {
             .collect()
     }
 
-    fn is_safe(&self, position: Coordinate, stone: Stone) -> bool {
+    // has_liberties returns true if there are an adjacent empty tiles for a position.
+    fn has_liberties(&self, position: Coordinate) -> bool {
         self.adjacent_liberties(position).iter().count() > 0
     }
 
-    fn is_suicide(&self, position: Coordinate, stone: Stone) -> bool {
-        !self.is_safe(position, stone)
-    }
-
+    // can_play tests if a position is valid and the tile is empty, it DOES NOT check for allies
+    // with liberties or foes without.
     fn can_play(&self, position: Coordinate, stone: Stone) -> bool {
         self.turn == stone &&
             self.valid_coordinate(position) &&
-            !self.has_stone(position) &&
-            self.is_safe(position, stone)
+            !self.has_stone(position)
     }
 
+    // advance_turn sets the game state so that it's the next player's turn.
     fn advance_turn(&mut self) {
         self.turn = match self.turn {
             Stone::Black => Stone::White,
@@ -258,10 +257,13 @@ impl Game {
 
     // remove_chain removes all pieces in a chain from the board.
     fn remove_chain(&mut self, chain: StoneMap) {
-        for (position, stone) in chain.iter() {
+        for (position, _) in chain.iter() {
             self.board.remove(position);
         }
     }
+
+    //fn can_capture(&self, origin: Coordinate, stone: Stone) -> bool {
+    //}
 
     // capture_stones removes any defenders from the board that no longer have any liberties.
     fn capture_stones(&mut self, position: Coordinate, stone: Stone) {
@@ -271,21 +273,66 @@ impl Game {
         for (position, stone) in defenders.iter() {
             let chain = self.chain(*position, *stone);
             println!("determining if chain {:?} has any liberties", chain);
-            if chain.iter().all(|(position, stone)| !self.is_safe(*position, *stone)) {
+            if chain.iter().all(|(position, _)| !self.has_liberties(*position)) {
                 self.remove_chain(chain);
             }
         }
     }
 
+    // has_vulnerable_foes returns true if a stone at a proposed coordinate would be able to
+    // capture any of the adjacent player's stones.
+    fn has_vulnerable_foes(&self, position: Coordinate, stone: Stone) -> bool {
+        println!("--> checking if position {:?} has any vulnerable foes", position);
+        let defenders = self.defenders(position, stone);
+        println!("stone {:?} has defenders: {:?}", stone, defenders);
+
+        for (position, stone) in defenders.iter() {
+            let chain = self.chain(*position, *stone);
+            println!("determining if chain {:?} has any liberties", chain);
+            if chain.iter().all(|(position, _)| !self.has_liberties(*position)) {
+                println!("chain {:?} has no liberties, should be removed", chain);
+                return true;
+            }
+            println!("chain {:?} has liberties, is safe.", chain);
+        }
+
+        false
+    }
+
+    // has_safe_allies returns true if the stone at a proposed coordinate would have any allies
+    // with a liberty.
+    fn has_safe_allies(&self, position: Coordinate, stone: Stone) -> bool {
+        println!("--> checking if position {:?} has any safe allies", position);
+        let allies = self.allies(position, stone);
+        println!("stone {:?} has allies: {:?}", stone, allies);
+
+        for (position, stone) in allies.iter() {
+            let chain = self.chain(*position, *stone);
+            println!("determining if chain {:?} has any liberties", chain);
+            if chain.iter().any(|(position, _)| self.has_liberties(*position)) {
+                println!("found a liberty for chain {:?}!", chain);
+                return true;
+            }
+        }
+
+        false
+    }
+
+    // play_stone places a stone on the board, capturing any defending stones without any
+    // liberties. Returns false if the play is invalid, true otherwise.
     pub fn play_stone(&mut self, position: Coordinate, stone: Stone) -> bool {
-        if self.can_play(position, stone) {
+        if self.can_play(position, stone) && (
+            self.has_liberties(position) ||
+            self.has_vulnerable_foes(position, stone) ||
+            self.has_safe_allies(position, stone)) {
+
             self.board.insert(position, stone);
             self.capture_stones(position, stone);
             self.advance_turn();
-            true
-        } else {
-            false
+            return true;
         }
+
+        false
     }
 
     pub fn has_stone(&self, position: Coordinate) -> bool {
@@ -300,9 +347,9 @@ impl Game {
         self.board.iter().filter(|&(_, piece)| *piece == stone).count()
     }
 
-    pub fn player_score(&self, stone: Stone) -> usize {
-        self.board.iter().filter(|&(_, piece)| *piece == stone).count()
-    }
+    //pub fn player_score(&self, stone: Stone) -> usize {
+        //self.board.iter().filter(|&(_, piece)| *piece == stone).count()
+    //}
 
     pub fn winner(&self) -> Stone {
         Stone::Black
@@ -453,5 +500,40 @@ bwb......
     assert_eq!(true, game.play_stone((1, 0), Stone::Black));
     assert_eq!(false, game.has_stone((1, 1)));
     assert_eq!(Stone::Black, game.winner());
+}
+
+
+#[test]
+fn test_play_stone_capture_piece_exchange() {
+    let mut game = parse("
+.bw......
+bw.w.....
+.bw......
+.........
+.........
+.........
+.........
+.........
+.........", Stone::Black).unwrap();
+
+    assert_eq!(true, game.play_stone((2, 1), Stone::Black));
+    assert_eq!(false, game.has_stone((1, 0)));
+    assert_eq!(Stone::Black, game.winner());
+}
+
+#[test]
+fn test_play_stone_cannot_place_neighbour_has_no_liberties() {
+    let mut game = parse("
+bb.w.....
+www......
+.........
+.........
+.........
+.........
+.........
+.........
+.........", Stone::Black).unwrap();
+
+    assert_eq!(false, game.play_stone((2, 0), Stone::Black));
 }
 
