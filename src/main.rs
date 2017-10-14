@@ -100,6 +100,7 @@ fn websocket_server_start() {
 
 fn web_server_start() {
     let config = rocket::config::Config::build(rocket::config::Environment::Development)
+        .address("0.0.0.0")
         .port(8080)
         .finalize().expect("Could not create config");
 
