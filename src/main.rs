@@ -115,7 +115,7 @@ fn web_server_start() {
 }
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
 
     let websocket_handler = thread::spawn(|| {
         websocket_server_start();
