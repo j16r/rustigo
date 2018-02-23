@@ -243,7 +243,6 @@ impl Game {
                 },
                 Some(_) => {
                     let mut enemy_routed = true;
-                    let foe = self.foe(stone);
 
                     let mut chain = Vec::<Coordinate>::new();
                     chain.push(neighbour);
@@ -266,7 +265,7 @@ impl Game {
                         for search_position in self.adjacent_positions(position) {
                             if !searched_tiles.contains(&search_position) {
                                 match self.board.get(&search_position) {
-                                    Some(tile) if *tile == foe => {
+                                    Some(tile) if *tile != stone => {
                                         positions_to_search.push(search_position);
                                         chain.push(search_position);
                                     },
