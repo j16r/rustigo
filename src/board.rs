@@ -189,10 +189,8 @@ impl Game {
         }
     }
 
-    // attack returns a chain at to being attacked by from if it has no liberties
+    // attack returns a chain at `to` being attacked by `from` if it has no liberties
     fn attack(&self, from: Coordinate, to: Coordinate, stone: Stone) -> Option<Vec<Coordinate>> {
-        let mut enemy_routed = true;
-
         let mut chain = Vec::<Coordinate>::new();
         chain.push(to);
 
@@ -218,11 +216,10 @@ impl Game {
                             positions_to_search.push(search_position);
                             chain.push(search_position);
                         },
-                        Some(_) => {
-                        },
+                        Some(_) => {},
                         None => {
                             // Found an empty tile near this chain, it's safe!
-                            enemy_routed = false;
+                            return None;
                         }
                     }
                 }
@@ -231,11 +228,47 @@ impl Game {
             searched_tiles.insert(position);
         }
 
-        if enemy_routed {
-            return Some(chain);
+        Some(chain)
+    }
+
+    // allie_has_liberty returns true if the chain attached to proposed (indicated by allie) has a
+    // liberty.
+    fn allie_has_liberty(&self, proposed: Coordinate, allie: Coordinate, stone: Stone) -> bool {
+        let mut searched_tiles = HashSet::<Coordinate>::new();
+        searched_tiles.insert(proposed);
+        searched_tiles.insert(allie);
+
+        let mut positions_to_search = Vec::<Coordinate>::new();
+        positions_to_search.push(allie);
+
+        loop {
+            let position = match positions_to_search.pop() {
+                Some(position) => position,
+                None => {
+                    break;
+                },
+            };
+
+            for search_position in self.adjacent_positions(position) {
+                if !searched_tiles.contains(&search_position) {
+                    match self.board.get(&search_position) {
+                        Some(tile) if *tile == stone => {
+                            positions_to_search.push(search_position);
+                        },
+                        Some(_) => {
+                        },
+                        None => {
+                            // Found an empty tile near this chain, it's safe!
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            searched_tiles.insert(position);
         }
 
-        None
+        return false;
     }
 
     // play_stone places a stone on the board, capturing any defending stones without any
@@ -254,40 +287,7 @@ impl Game {
                     if !safe {
                         // safe has not yet been toggled to true, search for a liberty through this
                         // adjacent chain
-
-                        let mut searched_tiles = HashSet::<Coordinate>::new();
-                        searched_tiles.insert(position);
-                        searched_tiles.insert(neighbour);
-
-                        let mut positions_to_search = Vec::<Coordinate>::new();
-                        positions_to_search.push(neighbour);
-
-                        loop {
-                            let position = match positions_to_search.pop() {
-                                Some(position) => position,
-                                None => {
-                                    break;
-                                },
-                            };
-
-                            for search_position in self.adjacent_positions(position) {
-                                if !searched_tiles.contains(&search_position) {
-                                    match self.board.get(&search_position) {
-                                        Some(tile) if *tile == stone => {
-                                            positions_to_search.push(search_position);
-                                        },
-                                        Some(_) => {
-                                        },
-                                        None => {
-                                            // Found an empty tile near this chain, it's safe!
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-
-                            searched_tiles.insert(position);
-                        }
+                        safe = self.allie_has_liberty(position, neighbour, stone);
                     }
                 },
                 Some(_) => {
