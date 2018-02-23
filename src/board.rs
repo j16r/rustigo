@@ -189,6 +189,55 @@ impl Game {
         }
     }
 
+    // attack returns a chain at to being attacked by from if it has no liberties
+    fn attack(&self, from: Coordinate, to: Coordinate, stone: Stone) -> Option<Vec<Coordinate>> {
+        let mut enemy_routed = true;
+
+        let mut chain = Vec::<Coordinate>::new();
+        chain.push(to);
+
+        let mut searched_tiles = HashSet::<Coordinate>::new();
+        searched_tiles.insert(from);
+        searched_tiles.insert(to);
+
+        let mut positions_to_search = Vec::<Coordinate>::new();
+        positions_to_search.push(to);
+
+        loop {
+            let position = match positions_to_search.pop() {
+                Some(position) => position,
+                None => {
+                    break;
+                },
+            };
+
+            for search_position in self.adjacent_positions(position) {
+                if !searched_tiles.contains(&search_position) {
+                    match self.board.get(&search_position) {
+                        Some(tile) if *tile != stone => {
+                            positions_to_search.push(search_position);
+                            chain.push(search_position);
+                        },
+                        Some(_) => {
+                        },
+                        None => {
+                            // Found an empty tile near this chain, it's safe!
+                            enemy_routed = false;
+                        }
+                    }
+                }
+            }
+
+            searched_tiles.insert(position);
+        }
+
+        if enemy_routed {
+            return Some(chain);
+        }
+
+        None
+    }
+
     // play_stone places a stone on the board, capturing any defending stones without any
     // liberties. Returns false if the play is invalid, true otherwise.
     pub fn play_stone(&mut self, position: Coordinate, stone: Stone) -> bool {
@@ -242,50 +291,9 @@ impl Game {
                     }
                 },
                 Some(_) => {
-                    let mut enemy_routed = true;
-
-                    let mut chain = Vec::<Coordinate>::new();
-                    chain.push(neighbour);
-
-                    let mut searched_tiles = HashSet::<Coordinate>::new();
-                    searched_tiles.insert(position);
-                    searched_tiles.insert(neighbour);
-
-                    let mut positions_to_search = Vec::<Coordinate>::new();
-                    positions_to_search.push(neighbour);
-
-                    loop {
-                        let position = match positions_to_search.pop() {
-                            Some(position) => position,
-                            None => {
-                                break;
-                            },
-                        };
-
-                        for search_position in self.adjacent_positions(position) {
-                            if !searched_tiles.contains(&search_position) {
-                                match self.board.get(&search_position) {
-                                    Some(tile) if *tile != stone => {
-                                        positions_to_search.push(search_position);
-                                        chain.push(search_position);
-                                    },
-                                    Some(_) => {
-                                    },
-                                    None => {
-                                        // Found an empty tile near this chain, it's safe!
-                                        enemy_routed = false;
-                                    }
-                                }
-                            }
-                        }
-
-                        searched_tiles.insert(position);
-                    }
-
-                    if enemy_routed {
+                    if let Some(chain) = self.attack(position, neighbour, stone) {
                         routed_defenders.push(chain);
                         safe = true;
-                        break;
                     }
                 },
                 // found a free adjacent tile, tile is safe to place
