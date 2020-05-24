@@ -35,7 +35,7 @@ pub fn new(size: Size) -> Game {
     Game{
         id: 0,
         board: BTreeMap::new(),
-        size: size,
+        size,
         turn: Stone::Black}
 }
 
@@ -69,11 +69,7 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
         }
     }
 
-    Some(Game{
-        id: 0,
-        board: board,
-        size: size,
-        turn: turn})
+    Some(Game{id: 0, board, size, turn})
 }
 
 // decode reads in the wire transfer format of the game.
@@ -106,11 +102,7 @@ pub fn decode(game_str: &str) -> Option<Game> {
         _ => return None,
     };
 
-    Some(Game{
-        id: 0,
-        board: board,
-        size: size,
-        turn: turn})
+    Some(Game{id: 0, board, size, turn})
 }
 
 // encode produces a tightly packed ASCII safe representation of a game that can be shipped over
@@ -155,7 +147,7 @@ impl Game {
     //  (0, 0) => [(1, 0), (0, 1]
     fn adjacent_positions(&self, (x, y): Coordinate) -> Vec<Coordinate> {
         [(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)]
-            .into_iter()
+            .iter()
             .filter(|coordinate| self.valid_coordinate(**coordinate))
             .cloned()
             .collect()
@@ -340,16 +332,16 @@ impl Game {
 impl fmt::Debug for Game {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let extent = self.size as i8;
-        try!(formatter.write_str("\n\n"));
+        formatter.write_str("\n\n")?;
         for row in 0..extent {
             for column in 0..extent {
-                try!(formatter.write_str(match self.board.get(&(column, row)) {
+                formatter.write_str(match self.board.get(&(column, row)) {
                     Some(&Stone::Black) => "b",
                     Some(&Stone::White) => "w",
                     None => ".",
-                }))
+                })?
             }
-            try!(formatter.write_str("\n"));
+            formatter.write_str("\n")?;
         }
         formatter.write_str("\n")
     }

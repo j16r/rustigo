@@ -1,12 +1,12 @@
-#![feature(plugin)]
-#![plugin(rocket_codegen)]
+#![feature(decl_macro)]
+#![feature(proc_macro_hygiene)]
 
 //extern crate logger;
 extern crate ws;
-#[macro_use] extern crate conv;
+extern crate conv;
 #[macro_use] extern crate custom_derive;
 extern crate env_logger;
-extern crate rocket;
+#[macro_use] extern crate rocket;
 extern crate rocket_contrib;
 
 mod board;
@@ -104,7 +104,7 @@ fn web_server_start() {
         .port(8080)
         .finalize().expect("Could not create config");
 
-    rocket::custom(config, false)
+    rocket::custom(config)
         .mount("/", routes![
                redirect_to_root,
                serve_static_index,
