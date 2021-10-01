@@ -1,6 +1,6 @@
 use conv::TryFrom;
-use std::collections::HashSet;
 use std::collections::btree_map::BTreeMap;
+use std::collections::HashSet;
 use std::fmt;
 use std::iter::Iterator;
 
@@ -9,7 +9,7 @@ pub type Coordinate = (i8, i8);
 #[derive(Eq, PartialEq, Debug, Copy, Serialize, Deserialize, Clone)]
 pub enum Stone {
     Black,
-    White
+    White,
 }
 
 custom_derive! {
@@ -28,21 +28,22 @@ pub struct Game {
     id: u64,
     board: StoneMap,
     size: Size,
-    turn: Stone
+    turn: Stone,
 }
 
 pub fn new(size: Size) -> Game {
-    Game{
+    Game {
         id: 0,
         board: BTreeMap::new(),
         size,
-        turn: Stone::Black}
+        turn: Stone::Black,
+    }
 }
 
 // parse creates a new game from a simple human readable string representation.
 pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
     let mut board = BTreeMap::new();
-    let lines : Vec<&str> = board_str.trim().split("\n").collect();
+    let lines: Vec<&str> = board_str.trim().split("\n").collect();
 
     if lines.len() < (Size::Nine as usize) || lines.len() > (Size::Nineteen as usize) {
         return None;
@@ -62,19 +63,28 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
     for (y, line) in lines.iter().enumerate() {
         for (x, tile) in line.chars().enumerate() {
             match tile {
-                'b' => { board.insert((x as i8, y as i8), Stone::Black); },
-                'w' => { board.insert((x as i8, y as i8), Stone::White); },
+                'b' => {
+                    board.insert((x as i8, y as i8), Stone::Black);
+                }
+                'w' => {
+                    board.insert((x as i8, y as i8), Stone::White);
+                }
                 _ => (),
             }
         }
     }
 
-    Some(Game{id: 0, board, size, turn})
+    Some(Game {
+        id: 0,
+        board,
+        size,
+        turn,
+    })
 }
 
 // decode reads in the wire transfer format of the game.
 pub fn decode(game_str: &str) -> Option<Game> {
-    let segments : Vec<&str> = game_str.trim().split(";").collect();
+    let segments: Vec<&str> = game_str.trim().split(";").collect();
 
     let size_value = match segments[0].parse::<usize>() {
         Ok(size_value) => size_value,
@@ -90,11 +100,15 @@ pub fn decode(game_str: &str) -> Option<Game> {
         let x = index % size_value;
         let y = index / size_value;
         match tile {
-            'b' => { board.insert((x as i8, y as i8), Stone::Black); },
-            'w' => { board.insert((x as i8, y as i8), Stone::White); },
+            'b' => {
+                board.insert((x as i8, y as i8), Stone::Black);
+            }
+            'w' => {
+                board.insert((x as i8, y as i8), Stone::White);
+            }
             _ => (),
         };
-    };
+    }
 
     let turn = match segments[2] {
         "b" => Stone::Black,
@@ -102,7 +116,12 @@ pub fn decode(game_str: &str) -> Option<Game> {
         _ => return None,
     };
 
-    Some(Game{id: 0, board, size, turn})
+    Some(Game {
+        id: 0,
+        board,
+        size,
+        turn,
+    })
 }
 
 // encode produces a tightly packed ASCII safe representation of a game that can be shipped over
@@ -156,9 +175,7 @@ impl Game {
     // can_play tests if a position is valid and the tile is empty, it DOES NOT check for allies
     // with liberties or foes without.
     fn can_play(&self, position: Coordinate, stone: Stone) -> bool {
-        self.turn == stone &&
-            self.valid_coordinate(position) &&
-            !self.has_stone(position)
+        self.turn == stone && self.valid_coordinate(position) && !self.has_stone(position)
     }
 
     // advance_turn sets the game state so that it's the next player's turn.
@@ -198,7 +215,7 @@ impl Game {
                 Some(position) => position,
                 None => {
                     break;
-                },
+                }
             };
 
             for search_position in self.adjacent_positions(position) {
@@ -207,8 +224,8 @@ impl Game {
                         Some(tile) if *tile != stone => {
                             positions_to_search.push(search_position);
                             chain.push(search_position);
-                        },
-                        Some(_) => {},
+                        }
+                        Some(_) => {}
                         None => {
                             // Found an empty tile near this chain, it's safe!
                             return None;
@@ -238,7 +255,7 @@ impl Game {
                 Some(position) => position,
                 None => {
                     break;
-                },
+                }
             };
 
             for search_position in self.adjacent_positions(position) {
@@ -246,9 +263,8 @@ impl Game {
                     match self.board.get(&search_position) {
                         Some(tile) if *tile == stone => {
                             positions_to_search.push(search_position);
-                        },
-                        Some(_) => {
-                        },
+                        }
+                        Some(_) => {}
                         None => {
                             // Found an empty tile near this chain, it's safe!
                             return true;
@@ -281,17 +297,17 @@ impl Game {
                         // adjacent chain
                         safe = self.allie_has_liberty(position, neighbour, stone);
                     }
-                },
+                }
                 Some(_) => {
                     if let Some(chain) = self.attack(position, neighbour, stone) {
                         routed_defenders.push(chain);
                         safe = true;
                     }
-                },
+                }
                 // found a free adjacent tile, tile is safe to place
                 None => {
                     safe = true;
-                },
+                }
             }
         }
 
@@ -317,11 +333,14 @@ impl Game {
     }
 
     pub fn player_stones(&self, stone: Stone) -> usize {
-        self.board.iter().filter(|&(_, piece)| *piece == stone).count()
+        self.board
+            .iter()
+            .filter(|&(_, piece)| *piece == stone)
+            .count()
     }
 
     //pub fn player_score(&self, stone: Stone) -> usize {
-        //self.board.iter().filter(|&(_, piece)| *piece == stone).count()
+    //self.board.iter().filter(|&(_, piece)| *piece == stone).count()
     //}
 
     pub fn winner(&self) -> Stone {
@@ -394,7 +413,8 @@ fn test_play_stone_rejects_duplicate_plays() {
 
 #[test]
 fn test_parse() {
-    let game = parse("
+    let game = parse(
+        "
 .b.......
 b........
 .........
@@ -403,7 +423,10 @@ b........
 .........
 .........
 .........
-.........", Stone::Black).unwrap();
+.........",
+        Stone::Black,
+    )
+    .unwrap();
 
     assert_eq!(false, game.has_stone((0, 0)));
     assert_eq!(true, game.has_stone((1, 0)));
@@ -413,7 +436,8 @@ b........
 
 #[test]
 fn test_play_stone_no_liberties() {
-    let mut game = parse("
+    let mut game = parse(
+        "
 .b.....b.
 b.bbbbbb.
 .b....bbb
@@ -422,7 +446,10 @@ b.bbbbbb.
 .........
 .........
 b.......b
-.b.....b.", Stone::White).unwrap();
+.b.....b.",
+        Stone::White,
+    )
+    .unwrap();
 
     // Top left corner
     assert_eq!(false, game.play_stone((0, 0), Stone::White));
@@ -443,7 +470,8 @@ b.......b
 
 #[test]
 fn test_play_stone_empty_neighbour() {
-    let mut game = parse("
+    let mut game = parse(
+        "
 .b.....b.
 b.bbbbbb.
 .b....bbb
@@ -452,14 +480,18 @@ b.bbbbbb.
 .........
 .........
 b.......b
-.b.....b.", Stone::White).unwrap();
+.b.....b.",
+        Stone::White,
+    )
+    .unwrap();
 
     assert_eq!(true, game.play_stone((2, 0), Stone::White));
 }
 
 #[test]
 fn test_play_stone_capture_piece() {
-    let mut game = parse("
+    let mut game = parse(
+        "
 .........
 bwb......
 .b.......
@@ -468,17 +500,20 @@ bwb......
 .........
 .........
 .........
-.........", Stone::Black).unwrap();
+.........",
+        Stone::Black,
+    )
+    .unwrap();
 
     assert_eq!(true, game.play_stone((1, 0), Stone::Black));
     assert_eq!(false, game.has_stone((1, 1)));
     assert_eq!(Stone::Black, game.winner());
 }
 
-
 #[test]
 fn test_play_stone_capture_piece_exchange() {
-    let mut game = parse("
+    let mut game = parse(
+        "
 .bw......
 bw.w.....
 .bw......
@@ -487,7 +522,10 @@ bw.w.....
 .........
 .........
 .........
-.........", Stone::Black).unwrap();
+.........",
+        Stone::Black,
+    )
+    .unwrap();
 
     assert_eq!(true, game.play_stone((2, 1), Stone::Black));
     assert_eq!(false, game.has_stone((1, 1)));
@@ -496,7 +534,8 @@ bw.w.....
 
 #[test]
 fn test_play_stone_cannot_place_neighbour_has_no_liberties() {
-    let mut game = parse("
+    let mut game = parse(
+        "
 bb.w.....
 www......
 .........
@@ -505,8 +544,10 @@ www......
 .........
 .........
 .........
-.........", Stone::Black).unwrap();
+.........",
+        Stone::Black,
+    )
+    .unwrap();
 
     assert_eq!(false, game.play_stone((2, 0), Stone::Black));
 }
-
