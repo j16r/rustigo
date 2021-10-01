@@ -43,7 +43,7 @@ pub fn new(size: Size) -> Game {
 // parse creates a new game from a simple human readable string representation.
 pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
     let mut board = BTreeMap::new();
-    let lines: Vec<&str> = board_str.trim().split("\n").collect();
+    let lines: Vec<&str> = board_str.trim().split('\n').collect();
 
     if lines.len() < (Size::Nine as usize) || lines.len() > (Size::Nineteen as usize) {
         return None;
@@ -84,7 +84,7 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
 
 // decode reads in the wire transfer format of the game.
 pub fn decode(game_str: &str) -> Option<Game> {
-    let segments: Vec<&str> = game_str.trim().split(";").collect();
+    let segments: Vec<&str> = game_str.trim().split(';').collect();
 
     let size_value = match segments[0].parse::<usize>() {
         Ok(size_value) => size_value,
@@ -141,10 +141,10 @@ pub fn encode(game: &Game) -> String {
             });
         }
     }
-    output.push_str(";");
+    output.push(';');
     match game.turn {
-        Stone::Black => output.push_str("b"),
-        Stone::White => output.push_str("w"),
+        Stone::Black => output.push('b'),
+        Stone::White => output.push('w'),
     };
     output
 }
@@ -192,7 +192,7 @@ impl Game {
     }
 
     // remove_chain removes all pieces in a chain from the board.
-    fn remove_chain(&mut self, chain: &Vec<Coordinate>) {
+    fn remove_chain(&mut self, chain: &[Coordinate]) {
         for position in chain.iter() {
             self.board.remove(position);
         }
@@ -200,24 +200,15 @@ impl Game {
 
     // attack returns a chain at `to` being attacked by `from` if it has no liberties
     fn attack(&self, from: Coordinate, to: Coordinate, stone: Stone) -> Option<Vec<Coordinate>> {
-        let mut chain = Vec::<Coordinate>::new();
-        chain.push(to);
+        let mut chain = vec![to];
 
         let mut searched_tiles = HashSet::<Coordinate>::new();
         searched_tiles.insert(from);
         searched_tiles.insert(to);
 
-        let mut positions_to_search = Vec::<Coordinate>::new();
-        positions_to_search.push(to);
+        let mut positions_to_search = vec![to];
 
-        loop {
-            let position = match positions_to_search.pop() {
-                Some(position) => position,
-                None => {
-                    break;
-                }
-            };
-
+        while let Some(position) = positions_to_search.pop() {
             for search_position in self.adjacent_positions(position) {
                 if !searched_tiles.contains(&search_position) {
                     match self.board.get(&search_position) {
@@ -247,17 +238,9 @@ impl Game {
         searched_tiles.insert(proposed);
         searched_tiles.insert(allie);
 
-        let mut positions_to_search = Vec::<Coordinate>::new();
-        positions_to_search.push(allie);
+        let mut positions_to_search = vec![allie];
 
-        loop {
-            let position = match positions_to_search.pop() {
-                Some(position) => position,
-                None => {
-                    break;
-                }
-            };
-
+        while let Some(position) = positions_to_search.pop() {
             for search_position in self.adjacent_positions(position) {
                 if !searched_tiles.contains(&search_position) {
                     match self.board.get(&search_position) {
@@ -276,7 +259,7 @@ impl Game {
             searched_tiles.insert(position);
         }
 
-        return false;
+        false
     }
 
     // play_stone places a stone on the board, capturing any defending stones without any
@@ -313,7 +296,7 @@ impl Game {
 
         if safe {
             for defending_chain in routed_defenders.iter() {
-                self.remove_chain(&defending_chain);
+                self.remove_chain(defending_chain);
             }
 
             self.board.insert(position, stone);

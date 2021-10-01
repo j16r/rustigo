@@ -59,7 +59,7 @@ fn create_game(message: Json<NewGameMessage>) -> Result<Json<GameStateMessage>, 
                 board: board::encode(&game),
             }))
         }
-        _ => return Err(Status::UnprocessableEntity),
+        _ => Err(Status::UnprocessableEntity),
     }
 }
 
@@ -80,10 +80,10 @@ fn play_piece(message: Json<PlacePieceMessage>) -> Result<Json<GameStateMessage>
                 }))
             } else {
                 println!("Invalid play {:?}:{:?}", message.coordinate, message.stone);
-                return Err(Status::UnprocessableEntity);
+                Err(Status::UnprocessableEntity)
             }
         }
-        _ => return Err(Status::UnprocessableEntity),
+        _ => Err(Status::UnprocessableEntity),
     }
 }
 
