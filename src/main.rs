@@ -1,21 +1,17 @@
 #![feature(decl_macro)]
 #![feature(proc_macro_hygiene)]
 
-//extern crate logger;
-extern crate conv;
-extern crate ws;
 #[macro_use]
 extern crate custom_derive;
-extern crate env_logger;
+use env_logger;
 #[macro_use]
 extern crate rocket;
-extern crate rocket_contrib;
 
 mod board;
 
 use std::path::{Path, PathBuf};
 use std::thread;
-extern crate serde;
+
 #[macro_use]
 extern crate serde_derive;
 use rocket::http::Status;
