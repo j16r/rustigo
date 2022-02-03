@@ -54,7 +54,7 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
         return None;
     }
 
-    let size_result = Size::try_from(line_length);
+    let size_result = <Size as TryFrom<_>>::try_from(line_length);
     let size = match size_result {
         Ok(size) => size,
         _ => return None,
@@ -90,7 +90,7 @@ pub fn decode(game_str: &str) -> Option<Game> {
         Ok(size_value) => size_value,
         _ => return None,
     };
-    let size = match Size::try_from(size_value) {
+    let size = match <Size as TryFrom<_>>::try_from(size_value) {
         Ok(size) => size,
         _ => return None,
     };

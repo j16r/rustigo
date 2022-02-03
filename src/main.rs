@@ -52,7 +52,7 @@ pub struct GameStateMessage {
 
 #[post("/games", format = "application/json", data = "<message>")]
 fn create_game(message: Json<NewGameMessage>) -> Result<Json<GameStateMessage>, Status> {
-    match board::Size::try_from(message.size) {
+    match <board::Size as TryFrom<_>>::try_from(message.size) {
         Ok(size) => {
             let game = board::new(size);
             Ok(Json(GameStateMessage {
