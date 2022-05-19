@@ -1,25 +1,20 @@
-#![feature(decl_macro)]
-#![feature(proc_macro_hygiene)]
+use std::path::{Path, PathBuf};
 
 #[macro_use]
 extern crate custom_derive;
-use env_logger;
 #[macro_use]
 extern crate rocket;
-
-mod board;
-
-use std::path::{Path, PathBuf};
-use std::thread;
-
 #[macro_use]
 extern crate serde_derive;
-use rocket::http::Status;
-use rocket::response::{NamedFile, Redirect};
-use rocket_contrib::json::Json;
-//use logger::Logger;
+
 use conv::TryFrom;
-use ws::listen;
+use rocket::fs::NamedFile;
+use rocket::http::Status;
+use rocket::response::Redirect;
+use rocket::serde::json::Json;
+// use ws::listen;
+
+mod board;
 
 #[get("/")]
 fn redirect_to_root() -> Redirect {
@@ -27,13 +22,15 @@ fn redirect_to_root() -> Redirect {
 }
 
 #[get("/index.html")]
-fn serve_static_index() -> Option<NamedFile> {
-    NamedFile::open(Path::new("site/index.html")).ok()
+async fn serve_static_index() -> Option<NamedFile> {
+    NamedFile::open(Path::new("site/index.html")).await.ok()
 }
 
 #[get("/images/<file..>")]
-fn serve_static_image(file: PathBuf) -> Option<NamedFile> {
-    NamedFile::open(Path::new("site/images/").join(file)).ok()
+async fn serve_static_image(file: PathBuf) -> Option<NamedFile> {
+    NamedFile::open(Path::new("site/images/").join(file))
+        .await
+        .ok()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,51 +80,32 @@ fn play_piece(message: Json<PlacePieceMessage>) -> Result<Json<GameStateMessage>
     }
 }
 
-fn websocket_server_start() {
-    println!("Starting websocket server on :3012");
+// fn websocket_server_start() {
+//     println!("Starting websocket server on :3012");
 
-    if let Err(error) = listen("0.0.0.0:3012", |out| {
-        move |message| {
-            println!("Server got message '{}'. ", message);
-            out.send(message)
-        }
-    }) {
-        println!("Failed to create WebSocket due to {:?}", error);
-    }
-}
+//     if let Err(error) = listen("0.0.0.0:3012", |out| {
+//         move |message| {
+//             println!("Server got message '{}'. ", message);
+//             out.send(message)
+//         }
+//     }) {
+//         println!("Failed to create WebSocket due to {:?}", error);
+//     }
+// }
 
-fn web_server_start() {
-    let config = rocket::config::Config::build(rocket::config::Environment::Development)
-        .address("0.0.0.0")
-        .port(8080)
-        .finalize()
-        .expect("Could not create config");
+#[launch]
+fn rocket() -> _ {
+    let config = rocket::Config::figment()
+        .merge(("port", 8080));
 
-    rocket::custom(config)
-        .mount(
-            "/",
-            routes![
-                redirect_to_root,
-                serve_static_index,
-                serve_static_image,
-                create_game,
-                play_piece
-            ],
-        )
-        .launch();
-}
-
-fn main() {
-    env_logger::init();
-
-    let websocket_handler = thread::spawn(|| {
-        websocket_server_start();
-    });
-
-    let webserver_handler = thread::spawn(|| {
-        web_server_start();
-    });
-
-    websocket_handler.join().unwrap();
-    webserver_handler.join().unwrap();
+    rocket::custom(config).mount(
+        "/",
+        routes![
+            redirect_to_root,
+            serve_static_index,
+            serve_static_image,
+            create_game,
+            play_piece
+        ],
+    )
 }
