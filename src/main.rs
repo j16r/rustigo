@@ -16,7 +16,6 @@ use rocket::serde::json::Json;
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
 use rocket::{State, Shutdown};
-// use ws::listen;
 
 mod board;
 
