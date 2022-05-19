@@ -11,7 +11,11 @@ use conv::TryFrom;
 use rocket::fs::NamedFile;
 use rocket::http::Status;
 use rocket::response::Redirect;
+use rocket::response::stream::{EventStream, Event};
 use rocket::serde::json::Json;
+use rocket::tokio::select;
+use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
+use rocket::{State, Shutdown};
 // use ws::listen;
 
 mod board;
@@ -80,32 +84,49 @@ fn play_piece(message: Json<PlacePieceMessage>) -> Result<Json<GameStateMessage>
     }
 }
 
-// fn websocket_server_start() {
-//     println!("Starting websocket server on :3012");
+#[derive(Debug, Clone, FromForm, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq, UriDisplayQuery))]
+#[serde(crate = "rocket::serde")]
+struct Message {
+    #[field(validate = len(..30))]
+    pub room: String,
+}
 
-//     if let Err(error) = listen("0.0.0.0:3012", |out| {
-//         move |message| {
-//             println!("Server got message '{}'. ", message);
-//             out.send(message)
-//         }
-//     }) {
-//         println!("Failed to create WebSocket due to {:?}", error);
-//     }
-// }
+#[get("/events")]
+async fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStream![] {
+    let mut rx = queue.subscribe();
+    EventStream! {
+        loop {
+            let msg = select! {
+                msg = rx.recv() => match msg {
+                    Ok(msg) => msg,
+                    Err(RecvError::Closed) => break,
+                    Err(RecvError::Lagged(_)) => continue,
+                },
+                _ = &mut end => break,
+            };
+
+            yield Event::json(&msg);
+        }
+    }
+}
 
 #[launch]
 fn rocket() -> _ {
     let config = rocket::Config::figment()
         .merge(("port", 8080));
 
-    rocket::custom(config).mount(
-        "/",
-        routes![
-            redirect_to_root,
-            serve_static_index,
-            serve_static_image,
-            create_game,
-            play_piece
-        ],
-    )
+    rocket::custom(config)
+        .manage(channel::<Message>(1024).0)
+        .mount(
+            "/",
+            routes![
+                redirect_to_root,
+                serve_static_index,
+                serve_static_image,
+                create_game,
+                play_piece,
+                events
+            ],
+        )
 }
