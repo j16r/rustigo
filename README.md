@@ -1,6 +1,6 @@
 # Rustigo
 
-![build and test](https://github.com/j16r/rustigo/actions/workflows/rust.yml/badge.svg)
+![Build and Test](https://github.com/j16r/rustigo/actions/workflows/rust.yaml/badge.svg)
 
 Play go online.
 
