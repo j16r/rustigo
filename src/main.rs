@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[macro_use]
 extern crate custom_derive;
@@ -10,14 +10,13 @@ extern crate serde_derive;
 extern crate rocket_include_static_resources;
 
 use conv::TryFrom;
-use rocket::fs::NamedFile;
 use rocket::http::Status;
+use rocket::response::stream::{Event, EventStream};
 use rocket::response::Redirect;
-use rocket::response::stream::{EventStream, Event};
 use rocket::serde::json::Json;
 use rocket::tokio::select;
-use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
-use rocket::{State, Shutdown};
+use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
+use rocket::{Shutdown, State};
 use rocket_include_static_resources::{EtagIfNoneMatch, StaticContextManager, StaticResponse};
 
 mod board;
@@ -30,7 +29,8 @@ fn redirect_to_root() -> Redirect {
 #[get("/index.html")]
 fn serve_static_index(
     static_resources: &State<StaticContextManager>,
-    etag_if_none_match: EtagIfNoneMatch) -> StaticResponse {
+    etag_if_none_match: EtagIfNoneMatch,
+) -> StaticResponse {
     static_resources.build(&etag_if_none_match, "index")
 }
 
@@ -38,9 +38,12 @@ fn serve_static_index(
 fn serve_static_image(
     file: PathBuf,
     static_resources: &State<StaticContextManager>,
-    etag_if_none_match: EtagIfNoneMatch) -> Result<StaticResponse, Status> {
+    etag_if_none_match: EtagIfNoneMatch,
+) -> Result<StaticResponse, Status> {
     let name = file.to_str().ok_or(Status::UnprocessableEntity)?;
-    Ok(static_resources.build(&etag_if_none_match, name))
+    static_resources
+        .try_build(&etag_if_none_match, name)
+        .map_err(|_| Status::NotFound)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -119,8 +122,7 @@ async fn events(queue: &State<Sender<Message>>, mut end: Shutdown) -> EventStrea
 
 #[launch]
 fn rocket() -> _ {
-    let config = rocket::Config::figment()
-        .merge(("port", 8080));
+    let config = rocket::Config::figment().merge(("port", 8080));
 
     rocket::custom(config)
         .attach(static_resources_initializer!(
