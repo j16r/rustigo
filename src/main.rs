@@ -6,6 +6,8 @@ extern crate custom_derive;
 extern crate rocket;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate rocket_include_static_resources;
 
 use conv::TryFrom;
 use rocket::fs::NamedFile;
@@ -16,6 +18,7 @@ use rocket::serde::json::Json;
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
 use rocket::{State, Shutdown};
+use rocket_include_static_resources::{EtagIfNoneMatch, StaticContextManager, StaticResponse};
 
 mod board;
 
@@ -25,15 +28,19 @@ fn redirect_to_root() -> Redirect {
 }
 
 #[get("/index.html")]
-async fn serve_static_index() -> Option<NamedFile> {
-    NamedFile::open(Path::new("site/index.html")).await.ok()
+fn serve_static_index(
+    static_resources: &State<StaticContextManager>,
+    etag_if_none_match: EtagIfNoneMatch) -> StaticResponse {
+    static_resources.build(&etag_if_none_match, "index")
 }
 
 #[get("/images/<file..>")]
-async fn serve_static_image(file: PathBuf) -> Option<NamedFile> {
-    NamedFile::open(Path::new("site/images/").join(file))
-        .await
-        .ok()
+fn serve_static_image(
+    file: PathBuf,
+    static_resources: &State<StaticContextManager>,
+    etag_if_none_match: EtagIfNoneMatch) -> Result<StaticResponse, Status> {
+    let name = file.to_str().ok_or(Status::UnprocessableEntity)?;
+    Ok(static_resources.build(&etag_if_none_match, name))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -116,6 +123,13 @@ fn rocket() -> _ {
         .merge(("port", 8080));
 
     rocket::custom(config)
+        .attach(static_resources_initializer!(
+                "index" => "site/index.html",
+
+                "blackpiece.png" => "site/images/blackpiece.png",
+                "whitepiece.png" => "site/images/whitepiece.png",
+                "tilecenter.png" => "site/images/tilecenter.png",
+        ))
         .manage(channel::<Message>(1024).0)
         .mount(
             "/",
