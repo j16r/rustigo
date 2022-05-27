@@ -1,8 +1,10 @@
-use conv::TryFrom;
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashSet;
 use std::fmt;
 use std::iter::Iterator;
+
+use conv::TryFrom;
+use rocket::serde::uuid::Uuid;
 
 pub type Coordinate = (i8, i8);
 
@@ -25,7 +27,7 @@ custom_derive! {
 type StoneMap = BTreeMap<Coordinate, Stone>;
 
 pub struct Game {
-    id: u64,
+    pub id: Uuid,
     board: StoneMap,
     size: Size,
     turn: Stone,
@@ -33,7 +35,7 @@ pub struct Game {
 
 pub fn new(size: Size) -> Game {
     Game {
-        id: 0,
+        id: Uuid::new_v4(),
         board: BTreeMap::new(),
         size,
         turn: Stone::Black,
@@ -75,7 +77,7 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
     }
 
     Some(Game {
-        id: 0,
+        id: Uuid::nil(),
         board,
         size,
         turn,
@@ -86,7 +88,11 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
 pub fn decode(game_str: &str) -> Option<Game> {
     let segments: Vec<&str> = game_str.trim().split(';').collect();
 
-    let size_value = match segments[0].parse::<usize>() {
+    let id = match segments[0].parse::<Uuid>() {
+        Ok(id) => id,
+        _ => return None,
+    };
+    let size_value = match segments[1].parse::<usize>() {
         Ok(size_value) => size_value,
         _ => return None,
     };
@@ -96,7 +102,7 @@ pub fn decode(game_str: &str) -> Option<Game> {
     };
 
     let mut board = BTreeMap::new();
-    for (index, tile) in segments[1].chars().enumerate() {
+    for (index, tile) in segments[2].chars().enumerate() {
         let x = index % size_value;
         let y = index / size_value;
         match tile {
@@ -110,14 +116,14 @@ pub fn decode(game_str: &str) -> Option<Game> {
         };
     }
 
-    let turn = match segments[2] {
+    let turn = match segments[3] {
         "b" => Stone::Black,
         "w" => Stone::White,
         _ => return None,
     };
 
     Some(Game {
-        id: 0,
+        id,
         board,
         size,
         turn,
@@ -127,10 +133,10 @@ pub fn decode(game_str: &str) -> Option<Game> {
 // encode produces a tightly packed ASCII safe representation of a game that can be shipped over
 // the wire safely.
 pub fn encode(game: &Game) -> String {
-    let mut output = "".to_string();
+    let mut output = String::new();
 
     let extent = game.size as i8;
-    output.push_str(&*format!("{};", extent));
+    output.push_str(&*format!("{};{};", game.id, extent));
 
     for row in 0..extent {
         for column in 0..extent {
@@ -352,7 +358,7 @@ impl fmt::Debug for Game {
 #[test]
 fn test_new() {
     let game = new(Size::Nine);
-    assert_eq!(game.id, 0);
+    assert_ne!(game.id, Uuid::nil());
     assert_eq!(Stone::Black, game.turn());
     assert_eq!(false, game.has_stone((0, 0)));
 }

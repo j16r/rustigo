@@ -11,9 +11,10 @@ extern crate rocket_include_static_resources;
 
 use conv::TryFrom;
 use rocket::http::Status;
-use rocket::response::stream::{Event, EventStream};
 use rocket::response::Redirect;
+use rocket::response::stream::{Event, EventStream};
 use rocket::serde::json::Json;
+use rocket::serde::uuid::Uuid;
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
 use rocket::{Shutdown, State};
@@ -85,10 +86,18 @@ pub struct PlacePieceMessage {
 }
 
 #[put("/games", format = "application/json", data = "<message>")]
-fn play_piece(message: Json<PlacePieceMessage>) -> Result<Json<GameStateMessage>, Status> {
+fn play_piece(message: Json<PlacePieceMessage>, queue: &State<Sender<Message>>) -> Result<Json<GameStateMessage>, Status> {
+    println!("Got play {:?}:{:?}", message.coordinate, message.stone);
     match board::decode(&message.board) {
         Some(mut game) => {
             if game.play_stone(message.coordinate, message.stone) {
+                println!("Valid play {:?}:{:?}", message.coordinate, message.stone);
+                let result = queue.send(Message{
+                    game_id: game.id,
+                });
+                if result.is_err() {
+                    eprintln!("Failed to post to SSE queue {:?}", result.err());
+                }
                 Ok(Json(GameStateMessage {
                     board: board::encode(&game),
                 }))
@@ -105,8 +114,7 @@ fn play_piece(message: Json<PlacePieceMessage>) -> Result<Json<GameStateMessage>
 #[cfg_attr(test, derive(PartialEq, UriDisplayQuery))]
 #[serde(crate = "rocket::serde")]
 struct Message {
-    #[field(validate = len(..30))]
-    pub room: String,
+    pub game_id: Uuid,
 }
 
 #[get("/events")]

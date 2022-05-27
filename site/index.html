@@ -32,19 +32,9 @@ span.white::before {
 }
     </style>
     <script>
-let uri = window.location;
-let new_uri;
-if (uri.protocol === "https:") {
-  new_uri = "wss:";
-} else {
-  new_uri = "ws:";
-}
-new_uri += "//" + uri.hostname + ":3012";
-new_uri += uri.pathname + "/ws";
-
-let socket = new WebSocket(new_uri);
-socket.onmessage = function(event) {
-  console.log(event.data);
+const events = new EventSource("events");
+events.onmessage = function(event) {
+  console.log('got event', event.data);
 }
 
 window.onload = function() {
@@ -60,6 +50,9 @@ window.onload = function() {
 };
 
 let updateState = function(message) {
+  let id = message.slice(0, 36);
+  console.log('updateState for game id', id);
+  message = message.slice(37);
   let size = parseInt(message, 10);
 
   let offset = message.indexOf(';') + 1;
