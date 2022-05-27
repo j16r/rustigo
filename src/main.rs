@@ -34,6 +34,14 @@ fn serve_static_index(
     static_resources.build(&etag_if_none_match, "index")
 }
 
+#[get("/favicon.ico")]
+fn serve_static_favicon(
+    static_resources: &State<StaticContextManager>,
+    etag_if_none_match: EtagIfNoneMatch,
+) -> StaticResponse {
+    static_resources.build(&etag_if_none_match, "favicon")
+}
+
 #[get("/images/<file..>")]
 fn serve_static_image(
     file: PathBuf,
@@ -127,6 +135,7 @@ fn rocket() -> _ {
     rocket::custom(config)
         .attach(static_resources_initializer!(
                 "index" => "site/index.html",
+                "favicon" => "site/images/favicon.ico",
 
                 "blackpiece.png" => "site/images/blackpiece.png",
                 "whitepiece.png" => "site/images/whitepiece.png",
@@ -137,6 +146,7 @@ fn rocket() -> _ {
             "/",
             routes![
                 redirect_to_root,
+                serve_static_favicon,
                 serve_static_index,
                 serve_static_image,
                 create_game,
