@@ -1,11 +1,12 @@
-use std::collections::btree_map::BTreeMap;
 use std::collections::HashSet;
+use std::collections::btree_map::BTreeMap;
 use std::fmt;
 use std::iter::Iterator;
 
 use rocket::form::FromFormField;
 use rocket::serde::uuid::Uuid;
 use serde_repr::*;
+use thiserror::Error;
 
 pub type Coordinate = (i8, i8);
 
@@ -98,47 +99,65 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
     })
 }
 
+#[derive(Error, Debug)]
+pub enum DecodeError {
+    #[error("Invalid or missing game ID")]
+    InvalidGameID,
+    #[error("Invalid or encoding of game size")]
+    InvalidSizeEncoding,
+    #[error("Invalid game size")]
+    InvalidSize,
+    #[error("Invalid board state")]
+    InvalidState,
+    #[error("Board state truncated")]
+    InvalidStateTruncated,
+    #[error("Invalid turn")]
+    InvalidTurn,
+}
+
 // decode reads in the wire transfer format of the game.
-pub fn decode(game_str: &str) -> Option<Game> {
-    dbg!(&game_str);
+pub fn decode(game_str: &str) -> Result<Game, DecodeError> {
     let segments: Vec<&str> = game_str.trim().split(';').collect();
 
-    dbg!(&segments);
     let id = match segments[0].parse::<Uuid>() {
         Ok(id) => id,
-        _ => return None,
+        _ => return Err(DecodeError::InvalidGameID),
     };
     let size_value = match segments[1].parse::<usize>() {
         Ok(size_value) => size_value,
-        _ => return None,
+        _ => return Err(DecodeError::InvalidSizeEncoding),
     };
-    let size: Size = size_value.try_into().ok()?;
+    let size: Size = match size_value.try_into() {
+        Ok(size) => size,
+        _ => return Err(DecodeError::InvalidSize),
+    };
 
     let mut board = BTreeMap::new();
     let square = (size as usize) * (size as usize);
-    let mut tiles = segments[2].chars();
+    let tiles: Vec<char> = segments[2].chars().collect();
     for index in 1..=square {
         let x = index % size_value;
         let y = index / size_value;
-        match tiles.nth(index) {
+        match tiles.get(index) {
             Some('b') => {
                 board.insert((x as i8, y as i8), Stone::Black);
             }
             Some('w') => {
                 board.insert((x as i8, y as i8), Stone::White);
             }
-            Some(_) => (),
-            None => break,
+            Some('.') => (),
+            Some(_) => return Err(DecodeError::InvalidState),
+            None => return Err(DecodeError::InvalidStateTruncated),
         };
     }
 
     let turn = match segments[3] {
         "b" => Stone::Black,
         "w" => Stone::White,
-        _ => return None,
+        _ => return Err(DecodeError::InvalidTurn),
     };
 
-    Some(Game {
+    Ok(Game {
         id,
         board,
         size,
@@ -152,8 +171,7 @@ pub fn encode(game: &Game) -> String {
     let mut output = String::new();
 
     let extent = game.size as i8;
-    output.push_str(format!("{};", extent).as_str());
-    // output.push_str(&*format!("{};{};", game.id, extent));
+    output.push_str(format!("{};{};", game.id, extent).as_str());
 
     for row in 0..extent {
         for column in 0..extent {

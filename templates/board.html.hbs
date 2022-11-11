@@ -47,6 +47,9 @@ span.white::before {
 }
     </style>
     <script>
+const size = {{ size }};
+let player = 'Black';
+
 const events = new EventSource("events");
 events.onmessage = function(event) {
   console.log('got event', event);
@@ -57,12 +60,13 @@ let parseGame = function(input) {
   console.log('parseGame', input);
   let parts = input.split(';');
   let player = 'Black';
-  if(parts[2] == 'w') {
+  if(parts[3] == 'w') {
     player = 'White';
   }
   return {
-    size: parseInt(parts[0]),
-    state: parts[1],
+    id: parts[0],
+    size: parseInt(parts[1]),
+    state: parts[2],
     player: player,
   }
 }
@@ -75,13 +79,12 @@ window.onload = function() {
     updateState(game);
     return;
   }
-  size = parseInt(document.location.search.split('=')[1]);
 };
 
 let updateState = function(game) {
+  console.log("updateState(", game, ")");
   player = game.player;
-  size = game.size;
-  console.log('updateState for game size', size, 'player', player);
+  console.log('updateState for game size', size, 'player', player, 'game.state', game.state);
 
   for (const [i, piece] of Object.entries(game.state)) {
     let tile = getTile(i % size, Math.floor(i / size));
@@ -136,24 +139,39 @@ let post = function(path, message, onload=null) {
 }
 
 let placeTile = function(x, y) {
-  let gameBoard = document.location.hash.substring(1);
-  let place_piece_message = {board: gameBoard, coordinate: [x, y], stone: player, size};
+  let state = '';
+  const tiles = document.evaluate('//div/span', document, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
+  while(tile = tiles.iterateNext()) {
+    if (tile.classList.contains('black')) {
+      console.log('tile', tile, tile.classList);
+      state += 'b';
+    } else if (tile.classList.contains('white')) {
+      console.log('tile', tile, tile.classList);
+      state += 'w';
+    } else {
+      state += '.';
+    }
+  }
+  let gameBoard = '{{ game_id }};' + size + ';' + state + ';';
+  if (player == 'White') {
+    gameBoard += 'w';
+  } else {
+    gameBoard += 'b';
+  }
+  let place_piece_message = {board: gameBoard, coordinate: [x-1, y-1], stone: player, size};
+  console.log("placing piece", x, y, "player", player, "size", size);
   put('games', place_piece_message, function(message) {
     // document.location.hash = message.board;
   });
 }
-
-let size = 9;
-let player = 'Black';
-
     </script>
   </head>
   <body style="height: 100%; margin: 0">
     <section style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 0; margin: 0">
       <div id="game">
         <section id="board" style="height: 100%;">
-          {{#each size as |y| ~}}<div>
-              {{#each ../size as |x| ~}}<span onclick="placeTile({{x}}-1, {{y}}-1)"></span>{{/each ~}}
+          {{#each board_size as |y| ~}}<div>
+              {{#each ../board_size as |x| ~}}<span onclick="placeTile({{x}}, {{y}})"></span>{{/each ~}}
             </div>
           {{/each ~}}
         </section>

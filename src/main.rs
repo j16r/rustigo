@@ -62,9 +62,10 @@ fn serve_new_board(size: board::Size) -> Redirect {
 
 #[get("/<game_id>/board.html?<size..>")]
 fn serve_board(game_id: Uuid, size: board::Size) -> Template {
-    let piece_size = format!("{:.2}", 80.0 / ((size as u8) as f32));
-    let size = (1..=(size as u8)).collect::<Vec<_>>();
-    Template::render("board", context! { size, piece_size })
+    let size = size as u8;
+    let board_size = (1..=size).collect::<Vec<_>>();
+    let piece_size = format!("{:.2}", 80.0 / size as f32);
+    Template::render("board", context! { game_id, size, board_size, piece_size })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,8 +97,11 @@ fn play_piece(
         board::new(message.size)
     } else {
         match board::decode(&message.board) {
-            Some(game) => game,
-            _ => return Err(Status::UnprocessableEntity),
+            Ok(game) => game,
+            Err(err) => {
+                println!("Invalid board {:?}, error: {:?}", message.board, err);
+                return Err(Status::UnprocessableEntity);
+            }
         }
     };
 
