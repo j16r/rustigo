@@ -152,8 +152,8 @@ let player = 'Black';
     <section style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 0; margin: 0">
       <div id="game">
         <section id="board" style="height: 100%;">
-          {{#each size as |x| ~}}<div>
-              {{#each ../size as |y| ~}}<span onclick="placeTile({{x}}-1, {{y}}-1)"></span>{{/each ~}}
+          {{#each size as |y| ~}}<div>
+              {{#each ../size as |x| ~}}<span onclick="placeTile({{x}}-1, {{y}}-1)"></span>{{/each ~}}
             </div>
           {{/each ~}}
         </section>
