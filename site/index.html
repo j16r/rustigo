@@ -7,179 +7,18 @@
     <title>Go</title>
     <meta name="description" content="Go">
     <style>
-span.black::before {
-  top: 0;
-  left: 0;
-  content: "";
-  position: absolute;
-  background-image: url("images/blackpiece.png");
-  background-size: 100%;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-}
-
-span.white::before {
-  top: 0;
-  left: 0;
-  content: "";
-  position: absolute;
-  background-image: url("images/whitepiece.png");
-  background-size: 100%;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+a {
+  padding: 16px;
 }
     </style>
-    <script>
-const events = new EventSource("events");
-events.onmessage = function(event) {
-  console.log('got event', event.data);
-}
-
-window.onload = function() {
-  let hash = document.location.hash;
-  if(hash !== '') {
-    let message = hash.substring(1);
-    let size = parseInt(message, 10);
-    drawBoard(size);
-    updateState(message);
-  } else {
-    document.getElementById('menu').style.cssText = 'display: block';
-  }
-};
-
-let updateState = function(message) {
-  let id = message.slice(0, 36);
-  console.log('updateState for game id', id);
-  message = message.slice(37);
-  let size = parseInt(message, 10);
-
-  let offset = message.indexOf(';') + 1;
-  let i = offset;
-  for(; i < message.indexOf(';', i); i++) {
-    let piece = message[i];
-
-    let tile = getTile((i - offset) % size, Math.floor((i - offset) / size));
-    if(tile !== null) {
-      if(piece == 'b') {
-        tile.classList.add('black');
-      } else if (piece == 'w') {
-        tile.classList.add('white');
-      } else {
-        tile.classList.remove('white', 'black');
-      }
-    }
-  }
-
-  if(message[i + 1] == 'w') {
-    player = 'White';
-  } else {
-    player = 'Black';
-  }
-}
-
-window.onhashchange = function() {
-  let message = document.location.hash.substring(1);
-  updateState(message);
-}
-
-let getTile = function(x, y) {
-  return getElementByXPath('//div[position()=' + (y + 1) + ']/span[position()=' + (x + 1) + ']');
-}
-
-let getElementByXPath = function(query) {
-  return document.evaluate(query, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-}
-
-let request = function(method, path, message, onload=null) {
-  let httpRequest = new XMLHttpRequest();
-  httpRequest.open(method, path, true);
-  httpRequest.setRequestHeader('Content-Type', 'application/json');
-  httpRequest.setRequestHeader('Accept', 'application/json');
-  if(onload !== null) {
-    httpRequest.onload = function() {
-      let message = JSON.parse(this.responseText);
-      onload(message);
-    };
-  }
-  httpRequest.send(JSON.stringify(message));
-}
-
-let put = function(path, message, onload=null) {
-  return request('PUT', path, message, onload);
-}
-
-let post = function(path, message, onload=null) {
-  return request('POST', path, message, onload);
-}
-
-let player = 'Black';
-
-let drawBoard = function(size) {
-  let placeTile = function(x, y) {
-    let gameBoard = document.location.hash.substring(1);
-    let place_piece_message = {board: gameBoard, coordinate: [x, y], stone: player};
-    put('/games', place_piece_message, function(message) {
-      document.location.hash = message.board;
-    });
-  }
-
-  let menu = document.getElementById('menu');
-  menu.style.cssText = 'display: none';
-  document.getElementById('game').style.cssText = 'display: block';
-
-  const pieceSize = 80.0 / size;
-
-  let board = document.getElementById('board');
-  for(let y = 0; y < size; y++) {
-    let row = board.appendChild(document.createElement('div'));
-    row.style.cssText = 'height: ' + pieceSize + 'vmin; display: block';
-    for(let x = 0; x < size; x++) {
-      let tile = document.createElement('span');
-      tile.style.cssText = 'display: inline-block; height: ' +
-        pieceSize + 'vmin; width: ' +
-        pieceSize + 'vmin; background-size: ' +
-        pieceSize + 'vmin; background-image: url("images/tilecenter.png");' +
-        'position: relative; z-index: 1;';
-      tile.onclick = function() {
-        placeTile(x, y);
-      }
-      row.appendChild(tile);
-    }
-  }
-};
-
-let beginGame = function() {
-  let checked = document.querySelector('input[name=size]:checked');
-  if(checked) {
-    let size = parseInt(checked.value, 10);
-    drawBoard(size);
-    post('/games', {size: size}, function(game) {
-      console.log('game', game);
-      document.location.hash = game.board;
-    });
-  }
-};
-    </script>
   </head>
 
   <body style="height: 100%; margin: 0">
-
     <section style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 0; margin: 0">
-      <form id="menu" style="display: none">
-        <input type="radio" name="size" value="9">9x9</input>
-        <input type="radio" name="size" value="13" checked="checked">13x13</input>
-        <input type="radio" name="size" value="17">17x17</input>
-        <input type="radio" name="size" value="19">19x19</input>
-        <input type="button" value="Begin game" onclick="beginGame();" keydown="beginGame();">
-      </form>
-
-      <div id="game" style="display: none;">
-        <section id="board" style="height: 100%;">
-        </section>
-      </section>
+      <a href="/board.html?size=9">9x9</a>
+      <a href="/board.html?size=13">13x13</a>
+      <a href="/board.html?size=17">17x17</a>
+      <a href="/board.html?size=19">19x19</a>
     </section>
-
   </body>
 </html>

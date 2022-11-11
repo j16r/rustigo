@@ -1,0 +1,163 @@
+<!doctype html>
+
+<html lang="en" style="height: 100%">
+  <head>
+    <meta charset="utf-8">
+
+    <title>Go</title>
+    <meta name="description" content="Go">
+    <style>
+span.black::before {
+  top: 0;
+  left: 0;
+  content: "";
+  position: absolute;
+  background-image: url("/images/blackpiece.png");
+  background-size: 100%;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+span.white::before {
+  top: 0;
+  left: 0;
+  content: "";
+  position: absolute;
+  background-image: url("/images/whitepiece.png");
+  background-size: 100%;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#board div {
+  display: block;
+  height: {{ piece_size }}vmin;
+}
+
+#board span {
+  display: inline-block;
+  height: {{ piece_size }}vmin;
+  width: {{ piece_size }}vmin;
+  background-size: {{ piece_size }}vmin; 
+  background-image: url("/images/tilecenter.png");
+  position: relative;
+  z-index: 1;
+}
+    </style>
+    <script>
+const events = new EventSource("events");
+events.onmessage = function(event) {
+  console.log('got event', event);
+  document.location.hash = JSON.parse(event.data).board;
+}
+
+let parseGame = function(input) {
+  console.log('parseGame', input);
+  let parts = input.split(';');
+  let player = 'Black';
+  if(parts[2] == 'w') {
+    player = 'White';
+  }
+  return {
+    size: parseInt(parts[0]),
+    state: parts[1],
+    player: player,
+  }
+}
+
+window.onload = function() {
+  let hash = document.location.hash;
+  if(hash !== '') {
+    let game = parseGame(hash)
+    console.log('game', game);
+    updateState(game);
+    return;
+  }
+  size = parseInt(document.location.search.split('=')[1]);
+};
+
+let updateState = function(game) {
+  player = game.player;
+  size = game.size;
+  console.log('updateState for game size', size, 'player', player);
+
+  for (const [i, piece] of Object.entries(game.state)) {
+    let tile = getTile(i % size, Math.floor(i / size));
+    if(tile !== null) {
+      if(piece == 'b') {
+        tile.classList.add('black');
+      } else if (piece == 'w') {
+        tile.classList.add('white');
+      } else {
+        tile.classList.remove('white', 'black');
+      }
+    }
+  }
+
+}
+
+window.onhashchange = function() {
+  let message = document.location.hash.substring(1);
+  console.log('onhash change message', message);
+  let board = parseGame(message);
+  updateState(board);
+}
+
+let getTile = function(x, y) {
+  return getElementByXPath('//div[position()=' + (y + 1) + ']/span[position()=' + (x + 1) + ']');
+}
+
+let getElementByXPath = function(query) {
+  return document.evaluate(query, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+}
+
+let request = function(method, path, message, onload=null) {
+  let httpRequest = new XMLHttpRequest();
+  httpRequest.open(method, path, true);
+  httpRequest.setRequestHeader('Content-Type', 'application/json');
+  httpRequest.setRequestHeader('Accept', 'application/json');
+  if(onload !== null) {
+    httpRequest.onload = function() {
+      let message = JSON.parse(this.responseText);
+      onload(message);
+    };
+  }
+  httpRequest.send(JSON.stringify(message));
+}
+
+let put = function(path, message, onload=null) {
+  return request('PUT', path, message, onload);
+}
+
+let post = function(path, message, onload=null) {
+  return request('POST', path, message, onload);
+}
+
+let placeTile = function(x, y) {
+  let gameBoard = document.location.hash.substring(1);
+  let place_piece_message = {board: gameBoard, coordinate: [x, y], stone: player, size};
+  put('games', place_piece_message, function(message) {
+    // document.location.hash = message.board;
+  });
+}
+
+let size = 9;
+let player = 'Black';
+
+    </script>
+  </head>
+  <body style="height: 100%; margin: 0">
+    <section style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 0; margin: 0">
+      <div id="game">
+        <section id="board" style="height: 100%;">
+          {{#each size as |x| ~}}<div>
+              {{#each ../size as |y| ~}}<span onclick="placeTile({{x}}-1, {{y}}-1)"></span>{{/each ~}}
+            </div>
+          {{/each ~}}
+        </section>
+      </section>
+    </section>
+  </body>
+</html>

@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use std::fmt;
 use std::iter::Iterator;
 
-use conv::TryFrom;
+use serde_repr::*;
 use rocket::serde::uuid::Uuid;
+use rocket::form::FromFormField;
 
 pub type Coordinate = (i8, i8);
 
@@ -14,13 +15,30 @@ pub enum Stone {
     White,
 }
 
-custom_derive! {
-    #[derive(Debug, Copy, Clone, Eq, PartialEq, TryFrom(usize))]
-    pub enum Size {
-        Nine = 9,
-        Thirteen = 13,
-        Seventeen = 17,
-        Nineteen = 19
+#[derive(Serialize_repr, Deserialize_repr, Debug, Copy, Clone, Eq, PartialEq, FromFormField)]
+#[repr(u8)]
+pub enum Size {
+    #[field(value = "9")]
+    Nine = 9,
+    #[field(value = "13")]
+    Thirteen = 13,
+    #[field(value = "17")]
+    Seventeen = 17,
+    #[field(value = "19")]
+    Nineteen = 19
+}
+
+impl TryFrom<usize> for Size {
+    type Error = ();
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            9 => Ok(Size::Nine),
+            13 => Ok(Size::Thirteen),
+            17 => Ok(Size::Seventeen),
+            19 => Ok(Size::Nineteen),
+            _ => Err(())
+        }
     }
 }
 
@@ -56,11 +74,7 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
         return None;
     }
 
-    let size_result = <Size as TryFrom<_>>::try_from(line_length);
-    let size = match size_result {
-        Ok(size) => size,
-        _ => return None,
-    };
+    let size: Size = line_length.try_into().ok()?;
 
     for (y, line) in lines.iter().enumerate() {
         for (x, tile) in line.chars().enumerate() {
@@ -86,8 +100,10 @@ pub fn parse(board_str: &str, turn: Stone) -> Option<Game> {
 
 // decode reads in the wire transfer format of the game.
 pub fn decode(game_str: &str) -> Option<Game> {
+    dbg!(&game_str);
     let segments: Vec<&str> = game_str.trim().split(';').collect();
 
+    dbg!(&segments);
     let id = match segments[0].parse::<Uuid>() {
         Ok(id) => id,
         _ => return None,
@@ -96,23 +112,23 @@ pub fn decode(game_str: &str) -> Option<Game> {
         Ok(size_value) => size_value,
         _ => return None,
     };
-    let size = match <Size as TryFrom<_>>::try_from(size_value) {
-        Ok(size) => size,
-        _ => return None,
-    };
+    let size: Size = size_value.try_into().ok()?;
 
     let mut board = BTreeMap::new();
-    for (index, tile) in segments[2].chars().enumerate() {
+    let square = (size as usize) * (size as usize);
+    let mut tiles = segments[2].chars();
+    for index in 1..=square {
         let x = index % size_value;
         let y = index / size_value;
-        match tile {
-            'b' => {
+        match tiles.nth(index) {
+            Some('b') => {
                 board.insert((x as i8, y as i8), Stone::Black);
             }
-            'w' => {
+            Some('w') => {
                 board.insert((x as i8, y as i8), Stone::White);
             }
-            _ => (),
+            Some(_) => (),
+            None => break
         };
     }
 
@@ -136,7 +152,8 @@ pub fn encode(game: &Game) -> String {
     let mut output = String::new();
 
     let extent = game.size as i8;
-    output.push_str(&*format!("{};{};", game.id, extent));
+    output.push_str(&*format!("{};", extent));
+    // output.push_str(&*format!("{};{};", game.id, extent));
 
     for row in 0..extent {
         for column in 0..extent {
