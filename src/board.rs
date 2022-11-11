@@ -171,8 +171,6 @@ pub fn encode(game: &Game) -> String {
     let mut output = String::new();
 
     let extent = game.size as i8;
-    output.push_str(format!("{};{};", game.id, extent).as_str());
-
     for row in 0..extent {
         for column in 0..extent {
             output.push_str(match game.board.get(&(column, row)) {
@@ -182,11 +180,6 @@ pub fn encode(game: &Game) -> String {
             });
         }
     }
-    output.push(';');
-    match game.turn {
-        Stone::Black => output.push('b'),
-        Stone::White => output.push('w'),
-    };
     output
 }
 

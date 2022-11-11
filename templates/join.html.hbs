@@ -1,0 +1,72 @@
+<!doctype html>
+
+<html lang="en" style="height: 100%">
+  <head>
+    <meta charset="utf-8">
+
+    <title>Go</title>
+    <meta name="description" content="Go">
+    <style>
+h1:after {
+    content: '\00a0\00a0\00a0';
+    animation: progress-ellipsis 3s infinite;
+}
+
+@keyframes progress-ellipsis {
+    0% { content: '\00a0\00a0\00a0'; }
+    30% { content: '.\00a0\00a0'; }
+    60% { content: '..\00a0'; }
+    90% { content: '...'; }
+}
+    </style>
+    <script>
+console.log("getting events");
+
+const events = new EventSource("events");
+
+console.log("events", events);
+events.onmessage = function(event) {
+  event = JSON.parse(event.data);
+  console.log("got event", event);
+  if (typeof event.JoinAccepted !== 'undefined') {
+    event = event.JoinAccepted;
+    console.log('join accepted', event);
+    // Set the cookie
+    let value = JSON.stringify({size: event.size, public_key: ""});
+    document.cookie = 'w=' + encodeURIComponent(value);
+    document.location = "/" + event.id + "/game.html";
+  }
+}
+
+let request = function(method, path, message, onload=null) {
+  let httpRequest = new XMLHttpRequest();
+  httpRequest.open(method, path, true);
+  httpRequest.setRequestHeader('Content-Type', 'application/json');
+  httpRequest.setRequestHeader('Accept', 'application/json');
+  if(onload !== null) {
+    httpRequest.onload = function() {
+      let message = JSON.parse(this.responseText);
+      onload(message);
+    };
+  }
+  httpRequest.send(JSON.stringify(message));
+}
+
+let put = function(path, message, onload=null) {
+  return request('PUT', path, message, onload);
+}
+
+window.onload = function() {
+  put('joins', {}, null);
+}
+    </script>
+  </head>
+  <body style="height: 100%; margin: 0">
+    <section style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 0; margin: 0">
+      <header id="player">
+        <span style="padding: 6vmin;"><img src="/images/whitepiece.png"/></span>
+      </header>
+      <h1>Waiting to join game</h1>
+    </section>
+  </body>
+</html>

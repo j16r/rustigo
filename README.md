@@ -5,3 +5,7 @@
 Play go online.
 
 This project is currently in development.
+
+## Attributions
+
+Join image from [FreePik](https://www.flaticon.com/free-icons/link).
