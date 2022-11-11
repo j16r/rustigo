@@ -8,14 +8,14 @@ extern crate serde_derive;
 extern crate rocket_include_static_resources;
 
 use rocket::http::Status;
-use rocket::response::Redirect;
 use rocket::response::stream::{Event, EventStream};
+use rocket::response::Redirect;
 use rocket::serde::json::Json;
 use rocket::serde::uuid::Uuid;
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
 use rocket::{Shutdown, State};
-use rocket_dyn_templates::{Template, context};
+use rocket_dyn_templates::{context, Template};
 use rocket_include_static_resources::{EtagIfNoneMatch, StaticContextManager, StaticResponse};
 
 mod board;
@@ -41,7 +41,7 @@ fn serve_static_favicon(
     static_resources.build(&etag_if_none_match, "favicon")
 }
 
-#[get("/images/<file..>", rank=1)]
+#[get("/images/<file..>", rank = 1)]
 fn serve_static_image(
     file: PathBuf,
     static_resources: &State<StaticContextManager>,
@@ -81,8 +81,15 @@ pub struct PlacePieceMessage {
 }
 
 #[put("/<game_id>/games", format = "application/json", data = "<message>")]
-fn play_piece(game_id: Uuid, message: Json<PlacePieceMessage>, queue: &State<Sender<GameStateMessage>>) -> Result<Json<GameStateMessage>, Status> {
-    println!("Got play {:?}:{:?} = {:?}", message.coordinate, message.stone, message.board);
+fn play_piece(
+    game_id: Uuid,
+    message: Json<PlacePieceMessage>,
+    queue: &State<Sender<GameStateMessage>>,
+) -> Result<Json<GameStateMessage>, Status> {
+    println!(
+        "Got play {:?}:{:?} = {:?}",
+        message.coordinate, message.stone, message.board
+    );
 
     let mut game = if message.board.is_empty() {
         println!("Board empty, initialize a new one");
@@ -97,7 +104,10 @@ fn play_piece(game_id: Uuid, message: Json<PlacePieceMessage>, queue: &State<Sen
     dbg!(&game);
 
     if game.play_stone(message.coordinate, message.stone) {
-        println!("Valid play {:?}:{:?}, new game: {:?}", message.coordinate, message.stone, &game);
+        println!(
+            "Valid play {:?}:{:?}, new game: {:?}",
+            message.coordinate, message.stone, &game
+        );
         let state = GameStateMessage {
             board: board::encode(&game),
         };
@@ -113,7 +123,11 @@ fn play_piece(game_id: Uuid, message: Json<PlacePieceMessage>, queue: &State<Sen
 }
 
 #[get("/<game_id>/events")]
-async fn events(game_id: Uuid, queue: &State<Sender<GameStateMessage>>, mut end: Shutdown) -> EventStream![] {
+async fn events(
+    game_id: Uuid,
+    queue: &State<Sender<GameStateMessage>>,
+    mut end: Shutdown,
+) -> EventStream![] {
     let mut rx = queue.subscribe();
     EventStream! {
         loop {

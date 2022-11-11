@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use std::fmt;
 use std::iter::Iterator;
 
-use serde_repr::*;
-use rocket::serde::uuid::Uuid;
 use rocket::form::FromFormField;
+use rocket::serde::uuid::Uuid;
+use serde_repr::*;
 
 pub type Coordinate = (i8, i8);
 
@@ -25,7 +25,7 @@ pub enum Size {
     #[field(value = "17")]
     Seventeen = 17,
     #[field(value = "19")]
-    Nineteen = 19
+    Nineteen = 19,
 }
 
 impl TryFrom<usize> for Size {
@@ -37,7 +37,7 @@ impl TryFrom<usize> for Size {
             13 => Ok(Size::Thirteen),
             17 => Ok(Size::Seventeen),
             19 => Ok(Size::Nineteen),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -128,7 +128,7 @@ pub fn decode(game_str: &str) -> Option<Game> {
                 board.insert((x as i8, y as i8), Stone::White);
             }
             Some(_) => (),
-            None => break
+            None => break,
         };
     }
 
