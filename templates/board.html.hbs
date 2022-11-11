@@ -64,6 +64,7 @@ span.white::before {
     <script>
 const size = {{ size }};
 const player = {{#if black_player ~}}'Black'{{else ~}}'White'{{/if ~}};
+let turn = 'Black';
 
 const events = new EventSource("events");
 events.onmessage = function(event) {
@@ -73,6 +74,11 @@ events.onmessage = function(event) {
     put('players', accept_player_message, null);
   } else if (typeof data.Update != 'undefined') {
     updateState(data.Update.board);
+    if (turn === 'Black') {
+      turn = 'White';
+    } else {
+      turn = 'Black';
+    }
   }
 }
 
@@ -120,6 +126,9 @@ let put = function(path, message, onload=null) {
 
 let placeTile = function(x, y) {
   let state = '';
+  if (player !== turn) {
+    return;
+  }
   const tiles = document.evaluate('//div/span', document, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
   while(tile = tiles.iterateNext()) {
     if (tile.classList.contains('black')) {
