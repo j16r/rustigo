@@ -52,12 +52,10 @@ let player = 'Black';
 
 const events = new EventSource("events");
 events.onmessage = function(event) {
-  console.log('got event', event);
   document.location.hash = JSON.parse(event.data).board;
 }
 
 let parseGame = function(input) {
-  console.log('parseGame', input);
   let parts = input.split(';');
   let player = 'Black';
   if(parts[3] == 'w') {
@@ -75,16 +73,13 @@ window.onload = function() {
   let hash = document.location.hash;
   if(hash !== '') {
     let game = parseGame(hash)
-    console.log('game', game);
     updateState(game);
     return;
   }
 };
 
 let updateState = function(game) {
-  console.log("updateState(", game, ")");
   player = game.player;
-  console.log('updateState for game size', size, 'player', player, 'game.state', game.state);
 
   for (const [i, piece] of Object.entries(game.state)) {
     let tile = getTile(i % size, Math.floor(i / size));
@@ -103,7 +98,6 @@ let updateState = function(game) {
 
 window.onhashchange = function() {
   let message = document.location.hash.substring(1);
-  console.log('onhash change message', message);
   let board = parseGame(message);
   updateState(board);
 }
@@ -143,10 +137,8 @@ let placeTile = function(x, y) {
   const tiles = document.evaluate('//div/span', document, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
   while(tile = tiles.iterateNext()) {
     if (tile.classList.contains('black')) {
-      console.log('tile', tile, tile.classList);
       state += 'b';
     } else if (tile.classList.contains('white')) {
-      console.log('tile', tile, tile.classList);
       state += 'w';
     } else {
       state += '.';
@@ -159,7 +151,6 @@ let placeTile = function(x, y) {
     gameBoard += 'b';
   }
   let place_piece_message = {board: gameBoard, coordinate: [x-1, y-1], stone: player, size};
-  console.log("placing piece", x, y, "player", player, "size", size);
   put('games', place_piece_message, function(message) {
     // document.location.hash = message.board;
   });
