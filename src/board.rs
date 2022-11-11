@@ -135,7 +135,7 @@ pub fn decode(game_str: &str) -> Result<Game, DecodeError> {
     let mut board = BTreeMap::new();
     let square = (size as usize) * (size as usize);
     let tiles: Vec<char> = segments[2].chars().collect();
-    for index in 1..=square {
+    for index in 1..square {
         let x = index % size_value;
         let y = index / size_value;
         match tiles.get(index) {
