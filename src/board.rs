@@ -152,7 +152,7 @@ pub fn encode(game: &Game) -> String {
     let mut output = String::new();
 
     let extent = game.size as i8;
-    output.push_str(&*format!("{};", extent));
+    output.push_str(format!("{};", extent).as_str());
     // output.push_str(&*format!("{};{};", game.id, extent));
 
     for row in 0..extent {
