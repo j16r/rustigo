@@ -10,7 +10,7 @@ extern crate rocket_include_static_resources;
 use rocket::http::{Cookie, CookieJar, Status};
 use rocket::response::stream::{Event, EventStream};
 use rocket::response::Redirect;
-use rocket::serde::json::{to_string, from_str, Json};
+use rocket::serde::json::{from_str, to_string, Json};
 use rocket::serde::uuid::Uuid;
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
@@ -46,7 +46,8 @@ fn serve_static_image(
     file: PathBuf,
     static_resources: &State<StaticContextManager>,
     etag_if_none_match: EtagIfNoneMatch,
-) -> Result<StaticResponse, Status> { let name = file.to_str().ok_or(Status::UnprocessableEntity)?;
+) -> Result<StaticResponse, Status> {
+    let name = file.to_str().ok_or(Status::UnprocessableEntity)?;
     static_resources
         .try_build(&etag_if_none_match, name)
         .map_err(|_| Status::NotFound)
@@ -69,7 +70,10 @@ fn serve_new_game(size: board::Size, cookies: &CookieJar<'_>) -> Redirect {
     let game_id = Uuid::new_v4();
     let size = size as u8;
 
-    let black_game_state = BlackGameState{size, private_key: "".to_string()};
+    let black_game_state = BlackGameState {
+        size,
+        private_key: "".to_string(),
+    };
     let mut game_cookie = Cookie::named("b");
     game_cookie.set_value(to_string(&black_game_state).unwrap());
     cookies.add(game_cookie);
@@ -91,16 +95,21 @@ fn serve_game(game_id: Uuid, cookies: &CookieJar<'_>) -> Template {
 
         let board_size = (1..=size).collect::<Vec<_>>();
         let piece_size = format!("{:.2}", 80.0 / size as f32);
-        Template::render("board", context! { game_id, size, board_size, piece_size, black_player: true })
+        Template::render(
+            "board",
+            context! { game_id, size, board_size, piece_size, black_player: true },
+        )
     } else if let Some(game_cookie) = cookies.get("w") {
-
         let white_game_state: WhiteGameState = from_str(game_cookie.value()).unwrap();
 
         let size = white_game_state.size;
 
         let board_size = (1..=size).collect::<Vec<_>>();
         let piece_size = format!("{:.2}", 80.0 / size as f32);
-        Template::render("board", context! { game_id, size, board_size, piece_size, black_player: false })
+        Template::render(
+            "board",
+            context! { game_id, size, board_size, piece_size, black_player: false },
+        )
     } else {
         unimplemented!("404 here");
     }
@@ -108,16 +117,9 @@ fn serve_game(game_id: Uuid, cookies: &CookieJar<'_>) -> Template {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GameStateMessage {
-    Join{
-        id: Uuid,
-    },
-    JoinAccepted{
-        id: Uuid,
-        size: u8,
-    },
-    Update{
-        board: String,
-    },
+    Join { id: Uuid },
+    JoinAccepted { id: Uuid, size: u8 },
+    Update { board: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,7 +133,6 @@ fn accept_player(
     message: Json<AcceptPlayerMessage>,
     queue: &State<Sender<GameStateMessage>>,
 ) -> Result<Json<GameStateMessage>, Status> {
-
     let state = GameStateMessage::JoinAccepted {
         id: game_id.clone(),
         size: message.size as u8,
@@ -153,10 +154,7 @@ fn request_join(
     message: Json<JoinMessage>,
     queue: &State<Sender<GameStateMessage>>,
 ) -> Result<Json<GameStateMessage>, Status> {
-
-    let state = GameStateMessage::Join{
-        id: game_id,
-    };
+    let state = GameStateMessage::Join { id: game_id };
     let result = queue.send(state.clone());
     if result.is_err() {
         eprintln!("Failed to post to SSE queue {:?}", result.err());

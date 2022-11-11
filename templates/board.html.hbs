@@ -24,6 +24,10 @@ img {
   width: {{ piece_size }}vmin;
 }
 
+.disabled {
+  opacity: 0.2;
+}
+
 #board div {
   height: {{ piece_size }}vmin;
 }
@@ -70,8 +74,11 @@ const events = new EventSource("events");
 events.onmessage = function(event) {
   const data = JSON.parse(event.data);
   if (typeof data.Join !== 'undefined') {
+    getElementByXPath('//footer//img').classList.add('disabled');
+
     let accept_player_message = {size};
     put('players', accept_player_message, null);
+
   } else if (typeof data.Update != 'undefined') {
     updateState(data.Update.board);
     if (turn === 'Black') {
@@ -79,6 +86,13 @@ events.onmessage = function(event) {
     } else {
       turn = 'Black';
     }
+  }
+
+  let player_icon = getElementByXPath('//header//span');
+  if (turn === player) {
+    player_icon.classList.remove('disabled');
+  } else {
+    player_icon.classList.add('disabled');
   }
 }
 
@@ -162,7 +176,7 @@ let copyJoinLink = function() {
         {{#if black_player ~}}
           <span class="black"></span>
         {{else ~}}
-          <span class="white"></span>
+          <span class="white disabled"></span>
         {{/if ~}}
       </header>
       <div id="game">
@@ -174,11 +188,13 @@ let copyJoinLink = function() {
           {{/each ~}}
         </section>
       </div>
-      {{#if black_player ~}}
-        <footer>
-          <a href="/{{ game_id }}/join.html" onclick="return copyJoinLink()"><img src="/images/join.png"></a>
-        </footer>
-      {{/if ~}}
+      <footer>
+        {{#if black_player ~}}
+            <a href="/{{ game_id }}/join.html" onclick="return copyJoinLink()"><img src="/images/join.png"></a>
+        {{else ~}}
+            <img class="disabled" src="/images/join.png">
+        {{/if ~}}
+      </footer>
     </section>
   </body>
 </html>

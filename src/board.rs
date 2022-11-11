@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use std::collections::btree_map::BTreeMap;
+use std::collections::HashSet;
 use std::fmt;
 use std::iter::Iterator;
 
