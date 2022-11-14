@@ -1586,8 +1586,9 @@ dependencies = [
 
 [[package]]
 name = "rocket-include-static-resources"
-version = "0.10.2"
-source = "git+https://github.com/j16r/rocket-include-static-resources.git#3b61126d15e732ce3b9012f9dd680fe16436dccc"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "332e6a9779662d155aa586016ba56f3997818283e1165bd1f3076f71e67b03ad"
 dependencies = [
  "manifest-dir-macros",
  "mime 0.3.16",

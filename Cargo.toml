@@ -4,12 +4,17 @@ version = "0.1.0"
 authors = ["John Barker <jebarker@gmail.com>"]
 edition = "2021"
 resolver = "2"
+license = "GPL-3.0"
+license-file = "LICENSE.txt"
+description = "Play Go online"
+homepage = "go.j16r.net"
+repository = "https://github.com/j16r/rustigo"
 
 [dependencies]
 env_logger = "0.9"
 logger = "0.4"
 rocket = { version = "0.5.0-rc.2", features = ["json", "uuid"] }
-rocket-include-static-resources = { git = "https://github.com/j16r/rocket-include-static-resources.git" }
+rocket-include-static-resources = "0.10"
 rocket_codegen = "0.5.0-rc.2"
 rocket_dyn_templates = { version = "0.1.0-rc.2", features = ["handlebars"] }
 serde = "1"
