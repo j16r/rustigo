@@ -2085,7 +2085,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "service-00000000-0000-0000-0000-000000000000"
+name = "service"
 version = "0.1.0"
 dependencies = [
  "server",
