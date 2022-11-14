@@ -1873,8 +1873,9 @@ dependencies = [
 
 [[package]]
 name = "rocket-include-static-resources"
-version = "0.10.2"
-source = "git+https://github.com/j16r/rocket-include-static-resources.git#3b61126d15e732ce3b9012f9dd680fe16436dccc"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "332e6a9779662d155aa586016ba56f3997818283e1165bd1f3076f71e67b03ad"
 dependencies = [
  "manifest-dir-macros",
  "mime 0.3.16",
@@ -1951,8 +1952,18 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 name = "rustigo"
 version = "0.1.0"
 dependencies = [
+ "env_logger",
+ "logger",
  "rocket",
- "server",
+ "rocket-include-static-resources",
+ "rocket_codegen",
+ "rocket_dyn_templates",
+ "serde",
+ "serde_derive",
+ "serde_repr",
+ "shuttle-service",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -2068,27 +2079,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "server"
+name = "service"
 version = "0.1.0"
 dependencies = [
- "env_logger",
- "logger",
- "rocket",
- "rocket-include-static-resources",
- "rocket_codegen",
- "rocket_dyn_templates",
- "serde",
- "serde_derive",
- "serde_repr",
- "thiserror",
- "uuid",
-]
-
-[[package]]
-name = "service-00000000-0000-0000-0000-000000000000"
-version = "0.1.0"
-dependencies = [
- "server",
+ "rustigo",
  "shuttle-service",
 ]
 

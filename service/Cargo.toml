@@ -1,8 +1,8 @@
 [package]
-name = "rustigo"
+name = "service"
 version = "0.1.0"
-authors = ["John Barker <jebarker@gmail.com>"]
 edition = "2021"
+authors = ["John Barker <jebarker@gmail.com>"]
 resolver = "2"
 license = "GPL-3.0-or-later"
 description = "Play Go online"
@@ -10,8 +10,5 @@ homepage = "go.j16r.net"
 repository = "https://github.com/j16r/rustigo"
 
 [dependencies]
-rocket = { version = "0.5.0-rc.2", features = ["json", "uuid"] }
-server = { path = "./server" }
-
-[workspace]
-members =  [ "server", "service" ]
+server = { path = "../server" }
+shuttle-service = { version = "0.7.2", features = ["web-rocket"] }

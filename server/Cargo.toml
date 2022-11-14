@@ -1,0 +1,23 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+[lib]
+
+[dependencies]
+env_logger = "0.9"
+logger = "0.4"
+rocket = { version = "0.5.0-rc.2", features = ["json", "uuid"] }
+rocket-include-static-resources = { git = "https://github.com/j16r/rocket-include-static-resources.git" }
+rocket_codegen = "0.5.0-rc.2"
+rocket_dyn_templates = { version = "0.1.0-rc.2", features = ["handlebars"] }
+serde = "1"
+serde_derive = "1"
+serde_repr = "0.1"
+thiserror = "1.0"
+
+[dependencies.uuid]
+version = "1"
+features = ["v4"]
