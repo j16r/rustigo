@@ -79,11 +79,17 @@ fn serve_new_game(size: board::Size, cookies: &CookieJar<'_>) -> Redirect {
     game_cookie.set_value(to_string(&black_game_state).unwrap());
     cookies.add(game_cookie);
 
+    // Purge any leftover cookies
+    cookies.remove(Cookie::named("w"));
+
     Redirect::to(format!("/{}/game.html", game_id))
 }
 
 #[get("/<game_id>/join.html")]
-fn serve_join_game(game_id: Uuid) -> Template {
+fn serve_join_game(game_id: Uuid, cookies: &CookieJar<'_>) -> Template {
+    // Purge any existing cookies
+    cookies.remove(Cookie::named("b"));
+    cookies.remove(Cookie::named("w"));
     Template::render("join", context! { game_id })
 }
 
