@@ -247,7 +247,13 @@ pub fn rocket() -> Rocket<Build> {
     rocket::custom(config)
         .attach(static_resources_initializer!(
                 "index" => "site/index.html",
+
                 "favicon" => "site/images/favicon.ico",
+                "favicon-16x16.png" => "site/images/favicon-16x16.png",
+                "favicon-32x32.png" => "site/images/favicon-32x32.png",
+                "android-chrome-192x192.png" => "site/images/android-chrome-192x192.png",
+                "android-chrome-512x512.png" => "site/images/android-chrome-512x512.png",
+                "apple-touch-icon.png" => "site/images/apple-touch-icon.png",
 
                 "blackpiece.png" => "site/images/blackpiece.png",
                 "whitepiece.png" => "site/images/whitepiece.png",
